@@ -57,6 +57,7 @@ const SchedulePage = () => {
         power: "1000W",
       },
       grandstand: 100,
+      price_per_hour: 100,
       grass: "GrassMaster",
       description:
         "An elite-level playing field offering the highest quality experience for small, exclusive matches.",
@@ -71,6 +72,7 @@ const SchedulePage = () => {
         power: "1000W",
       },
       grandstand: 70,
+      price_per_hour: 80,
       grass: "GrassMaster",
       description:
         "A premium pitch designed for refined gameplay, perfect for groups looking for top-tier conditions.",
@@ -85,6 +87,7 @@ const SchedulePage = () => {
         power: "1000W",
       },
       grandstand: 0,
+      price_per_hour: 10,
       grass: "Beach sand",
       description:
         "A sand-surfaced field that adds excitement and challenge to every match, great for beach-style play.",
@@ -99,6 +102,7 @@ const SchedulePage = () => {
         power: "1000W",
       },
       grandstand: 20,
+      price_per_hour: 30,
       grass: "SISGrass",
       description:
         "A central, versatile pitch suitable for a variety of matches, offering a balanced playing experience.",
@@ -258,9 +262,9 @@ const SchedulePage = () => {
                   }`}
                 >
                   <div className="font-medium">{pitch.name}</div>
-                  {/* <div className="text-sm opacity-80">
-                    Capacity: {pitch.capacity}
-                  </div> */}
+                  <div className="text-sm opacity-80">
+                    Cost: {pitch.price_per_hour}$ per hour
+                  </div>
                 </button>
               ))}
             </div>
@@ -295,7 +299,7 @@ const SchedulePage = () => {
                       : ""}
                   </li>
                   <li>Grass: {activePitch.grass}</li>
-
+                  <li>Cost: {activePitch.price_per_hour} $ per hour</li>
                   <li className="">{activePitch.description}</li>
                 </ul>
               )}
