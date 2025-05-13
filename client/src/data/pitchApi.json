@@ -1,0 +1,9 @@
+{
+    "success": true,
+    "message": "fetching data successful",
+    "data": {
+        "pitches": [
+
+        ]
+    }
+}

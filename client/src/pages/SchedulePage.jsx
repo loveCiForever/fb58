@@ -6,6 +6,7 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  CircleAlert,
 } from "lucide-react";
 import Header from "../components/layout/Header.jsx";
 import Footer from "../components/layout/Footer.jsx";
@@ -44,12 +45,19 @@ const SchedulePage = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedPitch, setSelectedPitch] = useState(1);
+  const [toggleAboutPitch, setToggleAboutPitch] = useState(false);
 
   const pitches = [
     {
       id: 1,
       name: "Super Vip Field",
       capacity: 10,
+      lighting_system: {
+        number_of_bulbs: 10,
+        power: "1000W",
+      },
+      grandstand: 100,
+      grass: "GrassMaster",
       description:
         "An elite-level playing field offering the highest quality experience for small, exclusive matches.",
       images: pitchImages[1],
@@ -58,6 +66,12 @@ const SchedulePage = () => {
       id: 2,
       name: "Vip Field",
       capacity: 10,
+      lighting_system: {
+        number_of_bulbs: 10,
+        power: "1000W",
+      },
+      grandstand: 70,
+      grass: "GrassMaster",
       description:
         "A premium pitch designed for refined gameplay, perfect for groups looking for top-tier conditions.",
       images: pitchImages[2],
@@ -66,6 +80,12 @@ const SchedulePage = () => {
       id: 3,
       name: "Sand Field",
       capacity: 10,
+      lighting_system: {
+        number_of_bulbs: 10,
+        power: "1000W",
+      },
+      grandstand: 0,
+      grass: "Beach sand",
       description:
         "A sand-surfaced field that adds excitement and challenge to every match, great for beach-style play.",
       images: pitchImages[3],
@@ -74,6 +94,12 @@ const SchedulePage = () => {
       id: 4,
       name: "Main Field",
       capacity: 10,
+      lighting_system: {
+        number_of_bulbs: 10,
+        power: "1000W",
+      },
+      grandstand: 20,
+      grass: "SISGrass",
       description:
         "A central, versatile pitch suitable for a variety of matches, offering a balanced playing experience.",
       images: pitchImages[4],
@@ -89,6 +115,10 @@ const SchedulePage = () => {
   }
 
   const formatDate = (date) => date.toISOString().split("T")[0];
+
+  const handleToggleAboutPitch = () => {
+    setToggleAboutPitch(!toggleAboutPitch);
+  };
 
   const isBooked = (pitchId, time) => {
     const formatted = formatDate(selectedDate);
@@ -152,15 +182,15 @@ const SchedulePage = () => {
         />
         <button
           onClick={prev}
-          className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white bg-opacity-50 p-2 rounded-full"
+          className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white hover:bg-gray-300 shadow-2xl bg-opacity-50 p-2 rounded-full"
         >
           <ChevronLeft className="w-6 h-6 text-gray-800" />
         </button>
         <button
           onClick={next}
-          className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white bg-opacity-50 p-2 rounded-full"
+          className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white hover:bg-gray-300 shadow-2xl bg-opacity-50 p-2 rounded-full"
         >
-          <ChevronRight className="w-6 h-6 text-gray-800" />
+          <ChevronRight className="w-6 h-6 text-gray-800 " />
         </button>
         <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
           {images.map((_, idx) => (
@@ -228,9 +258,9 @@ const SchedulePage = () => {
                   }`}
                 >
                   <div className="font-medium">{pitch.name}</div>
-                  <div className="text-sm opacity-80">
+                  {/* <div className="text-sm opacity-80">
                     Capacity: {pitch.capacity}
-                  </div>
+                  </div> */}
                 </button>
               ))}
             </div>
@@ -239,9 +269,36 @@ const SchedulePage = () => {
               <PitchImageSlider images={activePitch.images} />
             </div>
 
-            <div className="mt-4 p-4 bg-white border border-gray-300 rounded-lg">
-              <h3 className="text-lg font-medium">Description</h3>
-              <p className="mt-2 text-gray-700">{activePitch.description}</p>
+            <div className="mt-4 px-6 py-4 bg-white border border-gray-300 rounded-lg">
+              <button
+                className="flex w-full items-center"
+                onClick={() => {
+                  handleToggleAboutPitch();
+                }}
+              >
+                <CircleAlert className="mr-2 h-5 w-5 text-gray-500" />
+                <h3 className="text-lg font-medium">About this pitch</h3>
+              </button>
+
+              {toggleAboutPitch && (
+                <ul className="flex flex-col text-gray-700 list-disc ml-8 gap-2 mt-2">
+                  <li>Capacity: {activePitch.capacity} players</li>
+                  <li>Grandstand: {activePitch.grandstand} seats</li>
+                  <li>
+                    Lighting system:{" "}
+                    {activePitch.lighting_system
+                      ? activePitch.lighting_system.number_of_bulbs
+                      : "0"}{" "}
+                    bulbs {""}
+                    {activePitch.lighting_system
+                      ? activePitch.lighting_system.power
+                      : ""}
+                  </li>
+                  <li>Grass: {activePitch.grass}</li>
+
+                  <li className="">{activePitch.description}</li>
+                </ul>
+              )}
             </div>
           </div>
 
@@ -263,6 +320,7 @@ const SchedulePage = () => {
             <div className="divide-y divide-gray-200">
               {timeSlots.map((time, idx) => {
                 const booked = isBooked(selectedPitch, time);
+                console.log(timeSlots);
                 const details = booked
                   ? getBookingDetails(selectedPitch, time)
                   : null;
