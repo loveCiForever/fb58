@@ -11,111 +11,90 @@ import {
 import Header from "../components/layout/Header.jsx";
 import Footer from "../components/layout/Footer.jsx";
 
-import booking_api from "../data/bookingApi.json";
-
-const pitchImages = {
-  1: Object.values(
-    import.meta.glob("../assets/images/pitches/pitch1/*.{jpg,jpeg,png}", {
-      eager: true,
-      import: "default",
-    })
-  ),
-  2: Object.values(
-    import.meta.glob("../assets/images/pitches/pitch2/*.{jpg,jpeg,png}", {
-      eager: true,
-      import: "default",
-    })
-  ),
-  3: Object.values(
-    import.meta.glob("../assets/images/pitches/pitch3/*.{jpg,jpeg,png}", {
-      eager: true,
-      import: "default",
-    })
-  ),
-  4: Object.values(
-    import.meta.glob("../assets/images/pitches/pitch4/*.{jpg,jpeg,png}", {
-      eager: true,
-      import: "default",
-    })
-  ),
-};
+import api_booked_time_slots_by_date from "../data/api/booked-time-slots-by-date.json";
+import api_fields from "../data/api/fields.json";
 
 const SchedulePage = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedPitch, setSelectedPitch] = useState(1);
+  const [selectedPitchId, setSelectedPitchId] = useState(1);
   const [toggleAboutPitch, setToggleAboutPitch] = useState(false);
 
-  const pitches = [
-    {
-      id: 1,
-      name: "Super Vip Field",
-      capacity: 10,
-      lighting_system: {
-        number_of_bulbs: 10,
-        power: "1000W",
-      },
-      grandstand: 100,
-      price_per_hour: 100,
-      grass: "GrassMaster",
-      description:
-        "An elite-level playing field offering the highest quality experience for small, exclusive matches.",
-      images: pitchImages[1],
-    },
-    {
-      id: 2,
-      name: "Vip Field",
-      capacity: 10,
-      lighting_system: {
-        number_of_bulbs: 10,
-        power: "1000W",
-      },
-      grandstand: 70,
-      price_per_hour: 80,
-      grass: "GrassMaster",
-      description:
-        "A premium pitch designed for refined gameplay, perfect for groups looking for top-tier conditions.",
-      images: pitchImages[2],
-    },
-    {
-      id: 3,
-      name: "Sand Field",
-      capacity: 10,
-      lighting_system: {
-        number_of_bulbs: 10,
-        power: "1000W",
-      },
-      grandstand: 0,
-      price_per_hour: 10,
-      grass: "Beach sand",
-      description:
-        "A sand-surfaced field that adds excitement and challenge to every match, great for beach-style play.",
-      images: pitchImages[3],
-    },
-    {
-      id: 4,
-      name: "Main Field",
-      capacity: 10,
-      lighting_system: {
-        number_of_bulbs: 10,
-        power: "1000W",
-      },
-      grandstand: 20,
-      price_per_hour: 30,
-      grass: "SISGrass",
-      description:
-        "A central, versatile pitch suitable for a variety of matches, offering a balanced playing experience.",
-      images: pitchImages[4],
-    },
-  ];
+  const [bookings] = useState(api_booked_time_slots_by_date.data);
 
-  const [bookings] = useState(booking_api.data.bookings);
+  const [pitches] = useState(api_fields.data.fields);
+  const selectedPitch =
+    pitches.find((p) => p.id === selectedPitchId) || pitches[0];
+
+  const fieldData = bookings.fields.find((f) => f.id === selectedPitchId) || {};
+  const bookedSlots = fieldData.booked_time_slots || [];
+
+  const isBooked = (time) => bookedSlots.some((b) => b.startTime === time);
+  const getBookingDetails = (time) =>
+    bookedSlots.find((b) => b.startTime === time);
+
+  const parseTime = (t) => {
+    const [hh, mm] = t.split(":").map(Number);
+    return hh * 60 + mm;
+  };
+
+  const getHour = (t) => {
+    const hh = t.split(":").map(Number)[0];
+    return hh;
+  };
+
+  const isSlotBooked = (time) => {
+    const slot = parseTime(time);
+    return bookedSlots.some((b) => {
+      const start = parseTime(b.startTime);
+      const end = b.endTime ? parseTime(b.endTime) : start + 30;
+      return slot >= start && slot < end;
+    });
+  };
+
+  const getBookingForSlot = (time) => {
+    const slot = parseTime(time);
+    return bookedSlots.find((b) => {
+      const start = parseTime(b.startTime);
+      const end = b.endTime ? parseTime(b.endTime) : start + 30;
+      return slot >= start && slot < end;
+    });
+  };
 
   const timeSlots = [];
-  for (let hour = 8; hour < 22; hour++) {
+  for (
+    let hour = getHour(selectedPitch.openTime);
+    hour < getHour(selectedPitch.closeTime);
+    hour++
+  ) {
     timeSlots.push(`${hour.toString().padStart(2, "0")}:00`);
     timeSlots.push(`${hour.toString().padStart(2, "0")}:30`);
+  }
+
+  const displaySlots = [];
+
+  for (let i = 0; i < timeSlots.length; i++) {
+    const start = timeSlots[i];
+    const next = timeSlots[i + 1]
+      ? timeSlots[i + 1]
+      : (() => {
+          const [h, m] = start.split(":").map(Number);
+          const endHour =
+            m === 0
+              ? `${String(h).padStart(2, "0")}:30`
+              : `${String(h + 1).padStart(2, "0")}:00`;
+          return endHour;
+        })();
+
+    const booking = getBookingForSlot(start);
+    if (booking) {
+      if (start === booking.startTime) {
+        displaySlots.push({ start, end: booking.endTime || next, booking });
+      }
+    } else {
+      displaySlots.push({ start, end: next, booking: null });
+    }
   }
 
   const formatDate = (date) => date.toISOString().split("T")[0];
@@ -124,39 +103,13 @@ const SchedulePage = () => {
     setToggleAboutPitch(!toggleAboutPitch);
   };
 
-  const isBooked = (pitchId, time) => {
-    const formatted = formatDate(selectedDate);
-    return bookings.some(
-      (b) =>
-        b.pitchId === pitchId &&
-        b.date === formatted &&
-        b.startTime <= time &&
-        b.endTime > time
-    );
-  };
-
-  const getBookingDetails = (pitchId, time) => {
-    const formatted = formatDate(selectedDate);
-    return bookings.find(
-      (b) =>
-        b.pitchId === pitchId &&
-        b.date === formatted &&
-        b.startTime <= time &&
-        b.endTime > time
-    );
-  };
-
   const handleDateSelect = (date) => setSelectedDate(date);
-  const handlePitchChange = (id) => setSelectedPitch(id);
+  const handlePitchChange = (id) => setSelectedPitchId(id);
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    document.title = "Schedule";
   }, []);
 
   const getNextFourteenDays = () => {
@@ -170,48 +123,9 @@ const SchedulePage = () => {
     return days;
   };
 
-  const PitchImageSlider = ({ images = [] }) => {
-    const [current, setCurrent] = useState(0);
-    const len = images.length;
-    if (!len) return null;
-    const next = () => setCurrent((c) => (c === len - 1 ? 0 : c + 1));
-    const prev = () => setCurrent((c) => (c === 0 ? len - 1 : c - 1));
-
-    return (
-      <div className="relative w-full h-[400px] overflow-hidden rounded-lg">
-        <img
-          src={images[current]}
-          alt={`Slide ${current + 1}`}
-          className="w-full h-full object-cover"
-        />
-        <button
-          onClick={prev}
-          className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white hover:bg-gray-300 shadow-2xl bg-opacity-50 p-2 rounded-full"
-        >
-          <ChevronLeft className="w-6 h-6 text-gray-800" />
-        </button>
-        <button
-          onClick={next}
-          className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white hover:bg-gray-300 shadow-2xl bg-opacity-50 p-2 rounded-full"
-        >
-          <ChevronRight className="w-6 h-6 text-gray-800 " />
-        </button>
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
-          {images.map((_, idx) => (
-            <span
-              key={idx}
-              onClick={() => setCurrent(idx)}
-              className={`w-2 h-2 rounded-full cursor-pointer ${
-                idx === current ? "bg-white" : "bg-gray-400"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const activePitch = pitches.find((p) => p.id === selectedPitch) || pitches[0];
+  useEffect(() => {
+    document.title = "Schedule";
+  }, []);
 
   return (
     <>
@@ -248,29 +162,27 @@ const SchedulePage = () => {
           <div className="mb-6">
             <div className="flex items-center mb-3">
               <Users className="mr-2 h-5 w-5 text-gray-500" />
-              <span className="font-medium">Select Pitch:</span>
+              <span className="pitch-selection-label font-medium">
+                Select Pitch:
+              </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {pitches.map((pitch) => (
                 <button
                   key={pitch.id}
                   onClick={() => handlePitchChange(pitch.id)}
-                  className={`px-4 py-3 rounded-lg text-left ${
-                    pitch.id === selectedPitch
+                  className={`pitch-selection-btn px-4 py-3 rounded-lg text-left ${
+                    pitch.id === selectedPitchId
                       ? "bg-green-600 text-white"
                       : "bg-white border border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  <div className="font-medium">{pitch.name}</div>
-                  <div className="text-sm opacity-80">
-                    Cost: {pitch.price_per_hour}$ per hour
+                  <div className="pitch-name font-bold">{pitch.name}</div>
+                  <div className="short-des text-sm opacity-80">
+                    {pitch.short_description}
                   </div>
                 </button>
               ))}
-            </div>
-
-            <div className="mt-4">
-              <PitchImageSlider images={activePitch.images} />
             </div>
 
             <div className="mt-4 px-6 py-4 bg-white border border-gray-300 rounded-lg">
@@ -285,29 +197,83 @@ const SchedulePage = () => {
               </button>
 
               {toggleAboutPitch && (
-                <ul className="flex flex-col text-gray-700 list-disc ml-8 gap-2 mt-2">
-                  <li>Capacity: {activePitch.capacity} players</li>
-                  <li>Grandstand: {activePitch.grandstand} seats</li>
+                <ul className="flex flex-col text-gray-800 tracking-wide list-disc ml-8 gap-2 mt-2">
+                  <li>Description: {selectedPitch.full_description}</li>
                   <li>
-                    Lighting system:{" "}
-                    {activePitch.lighting_system
-                      ? activePitch.lighting_system.number_of_bulbs
-                      : "0"}{" "}
-                    bulbs {""}
-                    {activePitch.lighting_system
-                      ? activePitch.lighting_system.power
-                      : ""}
+                    <div>
+                      <span>Type of grass: </span>{" "}
+                      <span className="font-bold">
+                        {selectedPitch.grass_type}
+                      </span>
+                    </div>
                   </li>
-                  <li>Grass: {activePitch.grass}</li>
-                  <li>Cost: {activePitch.price_per_hour} $ per hour</li>
-                  <li className="">{activePitch.description}</li>
+                  <li>
+                    <div>
+                      <span>Lighting system: </span>
+                      <span className="font-bold">
+                        {selectedPitch.lighting_system.number_bulbs} bulbs{" "}
+                        {selectedPitch.lighting_system.power}
+                      </span>
+                    </div>
+                  </li>
+                  <li>
+                    <div>
+                      <span>Numbers of seat:</span>
+                      <span className="font-bold">
+                        {" "}
+                        {selectedPitch.capacity.seats}
+                      </span>
+                    </div>
+                  </li>
+                  <li>
+                    <div>
+                      <span>Numbers of players:</span>
+                      <span className="font-bold">
+                        {" "}
+                        {selectedPitch.capacity.players}
+                      </span>
+                    </div>
+                  </li>
+
+                  <li>
+                    <div>
+                      Price:
+                      <span className="font-bold">
+                        {" "}
+                        {Number(selectedPitch.price).toLocaleString(
+                          "en-US"
+                        )}{" "}
+                        VND (no lights)
+                      </span>{" "}
+                      and{" "}
+                      <span className="font-bold">
+                        {Number(selectedPitch.priceWithLights).toLocaleString(
+                          "en-US"
+                        )}{" "}
+                        VND (lights)
+                      </span>
+                    </div>
+                  </li>
+
+                  <li>
+                    <div className="flex items-center gap-1">
+                      <span>Available from</span>
+                      <span className="font-bold">
+                        {selectedPitch.openTime}
+                      </span>
+                      <span>to</span>
+                      <span className="font-bold">
+                        {selectedPitch.closeTime}
+                      </span>
+                    </div>
+                  </li>
                 </ul>
               )}
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b bg-gray-50">
+          <div className="bg-white rounded-lg shadow-none border border-gray-300 overflow-hidden">
+            <div className="px-6 py-4 border-b-[1px] border-gray-300 bg-gray-50">
               <div className="flex items-center">
                 <Clock className="mr-2 h-5 w-5 text-gray-500" />
                 <h2 className="text-lg font-medium">
@@ -319,51 +285,61 @@ const SchedulePage = () => {
                   })}
                 </h2>
               </div>
-              <p className="mt-1 text-sm text-gray-500">{activePitch.name}</p>
             </div>
             <div className="divide-y divide-gray-200">
-              {timeSlots.map((time, idx) => {
-                const booked = isBooked(selectedPitch, time);
-                console.log(timeSlots);
-                const details = booked
-                  ? getBookingDetails(selectedPitch, time)
-                  : null;
+              {displaySlots.map(({ start, end, booking }, idx) => {
+                const isBooked = Boolean(booking);
+                const labelTime = `${start} - ${end}`;
+
                 return (
                   <div
                     key={idx}
                     className={`px-6 py-3 flex justify-between items-center ${
-                      booked ? "bg-red-50" : "hover:bg-green-50"
+                      isBooked ? "bg-red-50" : "hover:bg-green-50"
                     }`}
                   >
                     <div className="flex items-center">
-                      <span className="font-medium w-16">{time}</span>
-                      {booked ? (
-                        <span className="ml-4 px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                      <span className="font-medium text-md w-32">
+                        {labelTime}
+                      </span>
+                      {isBooked ? (
+                        <span className="ml-4 px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
                           Booked
                         </span>
                       ) : (
-                        <span className="ml-4 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                        <span className="ml-4 px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">
                           Available
                         </span>
                       )}
                     </div>
-                    <div>
-                      {booked ? (
-                        <div className="text-sm text-gray-700">
-                          <span className="font-medium">{details.team}</span>
-                          <span className="mx-1">•</span>
-                          <span>
-                            {details.startTime} - {details.endTime}
-                          </span>
+
+                    {isBooked && (
+                      <div className="grid grid-cols-3 items-center w-full">
+                        <div className="text-right text-xl">
+                          {booking.team1}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => alert(`Book ${time}`)}
-                          className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
-                        >
-                          Book Now
-                        </button>
-                      )}
+                        <div className="text-center text-lg font-bold">vs</div>
+                        <div className="text-left text-xl">{booking.team2}</div>
+                      </div>
+                    )}
+
+                    <div>
+                      <button
+                        onClick={() =>
+                          alert(
+                            isBooked
+                              ? `Details for ${labelTime}`
+                              : `Book ${time}`
+                          )
+                        }
+                        className={`px-3 py-1 text-md font-medium text-white rounded-md ${
+                          isBooked
+                            ? "bg-yellow-500 hover:bg-yellow-600"
+                            : "bg-green-600 hover:bg-green-700"
+                        }`}
+                      >
+                        {isBooked ? "Details" : "Book Now"}
+                      </button>
                     </div>
                   </div>
                 );
