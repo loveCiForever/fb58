@@ -2,6 +2,52 @@
 
 A RESTful API for a football field booking system built with Express.js and SQLite.
 
+## Table of Contents
+
+- [Football Field Booking API](#football-field-booking-api)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Tech Stack](#tech-stack)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Running the API](#running-the-api)
+  - [API Documentation](#api-documentation)
+    - [Response Format](#response-format)
+    - [Base URL](#base-url)
+    - [Authentication Endpoints](#authentication-endpoints)
+      - [Register a new user](#register-a-new-user)
+      - [Verify account](#verify-account)
+      - [Login](#login)
+      - [Get user profile](#get-user-profile)
+      - [Update user profile](#update-user-profile)
+      - [Change password](#change-password)
+    - [Field Endpoints](#field-endpoints)
+      - [Get info of all fields](#get-info-of-all-fields)
+      - [Get field info by ID](#get-field-info-by-id)
+      - [Get available time slots](#get-available-time-slots)
+      - [Get booked time slots by fieldID and date](#get-booked-time-slots-by-fieldid-and-date)
+      - [Get booked time slots by date](#get-booked-time-slots-by-date)
+      - [Create a new field (admin only)](#create-a-new-field-admin-only)
+    - [Booking Endpoints](#booking-endpoints)
+      - [Create a new booking](#create-a-new-booking)
+      - [Get user's bookings](#get-users-bookings)
+      - [Get booking by ID](#get-booking-by-id)
+      - [Update booking payment proof](#update-booking-payment-proof)
+      - [Cancel booking](#cancel-booking)
+    - [Service Endpoints](#service-endpoints)
+      - [Get all active services](#get-all-active-services)
+      - [Get service by ID](#get-service-by-id)
+      - [Create a new service (admin only)](#create-a-new-service-admin-only)
+    - [Review Endpoints](#review-endpoints)
+      - [Get all reviews for a field](#get-all-reviews-for-a-field)
+      - [Create a review](#create-a-review)
+    - [Support Endpoints](#support-endpoints)
+      - [Create support request](#create-support-request)
+      - [Get user's support requests](#get-users-support-requests)
+    - [Report Endpoints (Admin only)](#report-endpoints-admin-only)
+      - [Generate revenue report](#generate-revenue-report)
+  - [License](#license)
 ## Features
 
 - User authentication (register, login, profile management)
@@ -170,7 +216,7 @@ For errors:
       "email": "john@example.com",
       "phone": "0123456789",
       "isVerified": true,
-      "role": "user"
+      "role": "user",
     },
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
@@ -247,7 +293,7 @@ For errors:
 
 ### Field Endpoints
 
-#### Get all fields
+#### Get info of all fields
 - **Endpoint**: `GET /api/fields`
 - **Response (200)**:
 ```json
@@ -255,35 +301,32 @@ For errors:
   "success": true,
   "message": "fetching data successful",
   "data": {
-    "fields": [
-      {
-        "id": 1,
-        "name": "Field 1",
-        "description": "Standard 5-a-side field with artificial grass",
-        "type": "5-a-side",
-        "price": 200000,
-        "priceWithLights": 250000,
-        "openTime": "07:00",
-        "closeTime": "22:00",
-        "status": "available"
-      },
-      {
-        "id": 2,
-        "name": "Field 2",
-        "description": "Standard 7-a-side field with artificial grass",
-        "type": "7-a-side",
-        "price": 300000,
-        "priceWithLights": 350000,
-        "openTime": "07:00",
-        "closeTime": "22:00",
-        "status": "available"
-      }
-    ]
+      "fields": [
+        {
+          "id": 1,
+          "name": "field 1",
+          "short_description": "field1_short_des",
+          "full_description": "field1_full_des",
+          "grass_type": "artificial",
+          "price": 200000,
+          "priceWithLights": 250000,
+          "lighting_system": {
+              "number_bulbs": 10,
+              "power": "1000W"
+          },
+          "capacity": {
+              "players": 10,
+              "seats": 100
+          },
+          "openTime": "07:00",
+          "closeTime": "22:00"
+        }
+      ]
   }
 }
 ```
 
-#### Get field by ID
+#### Get field info by ID
 - **Endpoint**: `GET /api/fields/:id`
 - **Response (200)**:
 ```json
@@ -291,17 +334,27 @@ For errors:
   "success": true,
   "message": "fetching data successful",
   "data": {
-    "field": {
-      "id": 1,
-      "name": "Field 1",
-      "description": "Standard 5-a-side field with artificial grass",
-      "type": "5-a-side",
-      "price": 200000,
-      "priceWithLights": 250000,
-      "openTime": "07:00",
-      "closeTime": "22:00",
-      "status": "available"
-    }
+      "fields": [
+        {
+          "id": 1,
+          "name": "field 1",
+          "short_description": "field1_short_des",
+          "full_description": "field1_full_des",
+          "grass_type": "artificial",
+          "price": 200000,
+          "priceWithLights": 250000,
+          "lighting_system": {
+              "number_bulbs": 10,
+              "power": "1000W"
+          },
+          "capacity": {
+              "players": 10,
+              "seats": 100
+          },
+          "openTime": "07:00",
+          "closeTime": "22:00"
+        }
+      ]
   }
 }
 ```
@@ -328,6 +381,123 @@ For errors:
       {
         "startTime": "09:00",
         "endTime": "10:00"
+      }
+    ]
+  }
+}
+```
+
+#### Get booked time slots by fieldID and date
+- **Endpoint**: `GET /api/booked-time-slots/:filedId/:date`
+- **Response (200)**:
+```json
+{
+  "success": true,
+  "message": "fetching data successful",
+  "data": {
+    "field": "Field 1",
+    "fieldId": 1,
+    "date": "2023-05-14",
+    "booked_time_slots": [
+      { 
+        "team1": "Doi bong thieu lam",
+        "team2": "MU",
+        "startTime": "07:00",
+        "endTime": "08:00",
+        "bookedBy": "userid",
+        "bookedAt": "datetime"
+      },
+      {
+        "team1": "23H50301",
+        "team2": "20E20101",
+        "startTime": "18:00",
+        "bookedBy": "userid",
+        "bookedAt": "datetime"
+        
+      },
+      {
+        "team1": "Real Madrid CF",
+        "team2": "Barcelona FC",
+        "startTime": "20:00",
+        "endTime": "22:00",
+        "bookedBy": "userid",
+        "bookedAt": "datetime"
+      }
+    ]
+  }
+}
+```
+
+#### Get booked time slots by date
+- **Endpoint**: `GET /api/booked-time-slots/:date`
+- **Response (200)**:
+```json
+{
+  "success": true,
+  "message": "fetching data successful",
+  "data": {
+    "date": "2023-05-14",
+    "fields": [
+      {
+        "field": "Field 1",
+        "id": 1,
+        "booked_time_slots": [
+          { 
+            "team1": "Doi bong thieu lam",
+            "team2": "MU",
+            "startTime": "09:00",
+            "endTime": "10:00",
+            "bookedBy": "userid",
+            "bookedAt": "datetime"
+          },
+          {
+            "team1": "23H50301",
+            "team2": "20E20101",
+            "startTime": "18:00",
+            "endTime": "10:00",
+            "bookedBy": "userid",
+            "bookedAt": "datetime"
+            
+          },
+          {
+            "team1": "Real Madrid CF",
+            "team2": "Barcelona FC",
+            "startTime": "20:00",
+            "endTime": "22:00",
+            "bookedBy": "userid",
+            "bookedAt": "datetime"
+          }
+        ]
+      },
+      {
+        "field": "Field 2",
+        "id": 2,
+        "booked_time_slots": [
+          { 
+            "team1": "Doi bong thieu lam",
+            "team2": "MU",
+            "startTime": "07:00",
+            "endTime": "08:00",
+            "bookedBy": "userid",
+            "bookedAt": "datetime"
+          },
+          {
+            "team1": "23H50301",
+            "team2": "20E20101",
+            "startTime": "18:00",
+            "bookedBy": "userid",
+            "bookedAt": "datetime"
+            
+          },
+          {
+            "team1": "Real Madrid CF",
+            "team2": "Barcelona FC",
+            "startTime": "20:00",
+            "endTime": "22:00",
+            "bookedBy": "userid",
+            "bookedAt": "datetime"
+          }
+        ]
       }
     ]
   }
