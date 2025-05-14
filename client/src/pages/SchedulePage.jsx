@@ -12,33 +12,7 @@ import Header from "../components/layout/Header.jsx";
 import Footer from "../components/layout/Footer.jsx";
 
 import booking_api from "../data/bookingApi.json";
-
-const pitchImages = {
-  1: Object.values(
-    import.meta.glob("../assets/images/pitches/pitch1/*.{jpg,jpeg,png}", {
-      eager: true,
-      import: "default",
-    })
-  ),
-  2: Object.values(
-    import.meta.glob("../assets/images/pitches/pitch2/*.{jpg,jpeg,png}", {
-      eager: true,
-      import: "default",
-    })
-  ),
-  3: Object.values(
-    import.meta.glob("../assets/images/pitches/pitch3/*.{jpg,jpeg,png}", {
-      eager: true,
-      import: "default",
-    })
-  ),
-  4: Object.values(
-    import.meta.glob("../assets/images/pitches/pitch4/*.{jpg,jpeg,png}", {
-      eager: true,
-      import: "default",
-    })
-  ),
-};
+import api_fields from "../data/api/fields.json";
 
 const SchedulePage = () => {
   const navigate = useNavigate();
@@ -47,70 +21,8 @@ const SchedulePage = () => {
   const [selectedPitch, setSelectedPitch] = useState(1);
   const [toggleAboutPitch, setToggleAboutPitch] = useState(false);
 
-  const pitches = [
-    {
-      id: 1,
-      name: "Super Vip Field",
-      capacity: 10,
-      lighting_system: {
-        number_of_bulbs: 10,
-        power: "1000W",
-      },
-      grandstand: 100,
-      price_per_hour: 100,
-      grass: "GrassMaster",
-      description:
-        "An elite-level playing field offering the highest quality experience for small, exclusive matches.",
-      images: pitchImages[1],
-    },
-    {
-      id: 2,
-      name: "Vip Field",
-      capacity: 10,
-      lighting_system: {
-        number_of_bulbs: 10,
-        power: "1000W",
-      },
-      grandstand: 70,
-      price_per_hour: 80,
-      grass: "GrassMaster",
-      description:
-        "A premium pitch designed for refined gameplay, perfect for groups looking for top-tier conditions.",
-      images: pitchImages[2],
-    },
-    {
-      id: 3,
-      name: "Sand Field",
-      capacity: 10,
-      lighting_system: {
-        number_of_bulbs: 10,
-        power: "1000W",
-      },
-      grandstand: 0,
-      price_per_hour: 10,
-      grass: "Beach sand",
-      description:
-        "A sand-surfaced field that adds excitement and challenge to every match, great for beach-style play.",
-      images: pitchImages[3],
-    },
-    {
-      id: 4,
-      name: "Main Field",
-      capacity: 10,
-      lighting_system: {
-        number_of_bulbs: 10,
-        power: "1000W",
-      },
-      grandstand: 20,
-      price_per_hour: 30,
-      grass: "SISGrass",
-      description:
-        "A central, versatile pitch suitable for a variety of matches, offering a balanced playing experience.",
-      images: pitchImages[4],
-    },
-  ];
-
   const [bookings] = useState(booking_api.data.bookings);
+  const [pitches] = useState(api_fields.data.fields);
 
   const timeSlots = [];
   for (let hour = 8; hour < 22; hour++) {
@@ -170,48 +82,48 @@ const SchedulePage = () => {
     return days;
   };
 
-  const PitchImageSlider = ({ images = [] }) => {
-    const [current, setCurrent] = useState(0);
-    const len = images.length;
-    if (!len) return null;
-    const next = () => setCurrent((c) => (c === len - 1 ? 0 : c + 1));
-    const prev = () => setCurrent((c) => (c === 0 ? len - 1 : c - 1));
+  // const PitchImageSlider = ({ images = [] }) => {
+  //   const [current, setCurrent] = useState(0);
+  //   const len = images.length;
+  //   if (!len) return null;
+  //   const next = () => setCurrent((c) => (c === len - 1 ? 0 : c + 1));
+  //   const prev = () => setCurrent((c) => (c === 0 ? len - 1 : c - 1));
 
-    return (
-      <div className="relative w-full h-[400px] overflow-hidden rounded-lg">
-        <img
-          src={images[current]}
-          alt={`Slide ${current + 1}`}
-          className="w-full h-full object-cover"
-        />
-        <button
-          onClick={prev}
-          className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white hover:bg-gray-300 shadow-2xl bg-opacity-50 p-2 rounded-full"
-        >
-          <ChevronLeft className="w-6 h-6 text-gray-800" />
-        </button>
-        <button
-          onClick={next}
-          className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white hover:bg-gray-300 shadow-2xl bg-opacity-50 p-2 rounded-full"
-        >
-          <ChevronRight className="w-6 h-6 text-gray-800 " />
-        </button>
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
-          {images.map((_, idx) => (
-            <span
-              key={idx}
-              onClick={() => setCurrent(idx)}
-              className={`w-2 h-2 rounded-full cursor-pointer ${
-                idx === current ? "bg-white" : "bg-gray-400"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
+  //   return (
+  //     <div className="relative w-full h-[400px] overflow-hidden rounded-lg">
+  //       <img
+  //         src={images[current]}
+  //         alt={`Slide ${current + 1}`}
+  //         className="w-full h-full object-cover"
+  //       />
+  //       <button
+  //         onClick={prev}
+  //         className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white hover:bg-gray-300 shadow-2xl bg-opacity-50 p-2 rounded-full"
+  //       >
+  //         <ChevronLeft className="w-6 h-6 text-gray-800" />
+  //       </button>
+  //       <button
+  //         onClick={next}
+  //         className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white hover:bg-gray-300 shadow-2xl bg-opacity-50 p-2 rounded-full"
+  //       >
+  //         <ChevronRight className="w-6 h-6 text-gray-800 " />
+  //       </button>
+  //       <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
+  //         {images.map((_, idx) => (
+  //           <span
+  //             key={idx}
+  //             onClick={() => setCurrent(idx)}
+  //             className={`w-2 h-2 rounded-full cursor-pointer ${
+  //               idx === current ? "bg-white" : "bg-gray-400"
+  //             }`}
+  //           />
+  //         ))}
+  //       </div>
+  //     </div>
+  //   );
+  // };
 
-  const activePitch = pitches.find((p) => p.id === selectedPitch) || pitches[0];
+  // const activePitch = pitches.find((p) => p.id === selectedPitch) || pitches[0];
 
   return (
     <>
@@ -248,30 +160,32 @@ const SchedulePage = () => {
           <div className="mb-6">
             <div className="flex items-center mb-3">
               <Users className="mr-2 h-5 w-5 text-gray-500" />
-              <span className="font-medium">Select Pitch:</span>
+              <span className="pitch-selection-label font-medium">
+                Select Pitch:
+              </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {pitches.map((pitch) => (
                 <button
                   key={pitch.id}
                   onClick={() => handlePitchChange(pitch.id)}
-                  className={`px-4 py-3 rounded-lg text-left ${
+                  className={`pitch-selection-btn px-4 py-3 rounded-lg text-left ${
                     pitch.id === selectedPitch
                       ? "bg-green-600 text-white"
                       : "bg-white border border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  <div className="font-medium">{pitch.name}</div>
-                  <div className="text-sm opacity-80">
-                    Cost: {pitch.price_per_hour}$ per hour
+                  <div className="pitch-name font-bold">{pitch.name}</div>
+                  <div className="short-des text-sm opacity-80">
+                    {pitch.short_description}
                   </div>
                 </button>
               ))}
             </div>
 
-            <div className="mt-4">
+            {/* <div className="mt-4">
               <PitchImageSlider images={activePitch.images} />
-            </div>
+            </div> */}
 
             <div className="mt-4 px-6 py-4 bg-white border border-gray-300 rounded-lg">
               <button
@@ -285,23 +199,7 @@ const SchedulePage = () => {
               </button>
 
               {toggleAboutPitch && (
-                <ul className="flex flex-col text-gray-700 list-disc ml-8 gap-2 mt-2">
-                  <li>Capacity: {activePitch.capacity} players</li>
-                  <li>Grandstand: {activePitch.grandstand} seats</li>
-                  <li>
-                    Lighting system:{" "}
-                    {activePitch.lighting_system
-                      ? activePitch.lighting_system.number_of_bulbs
-                      : "0"}{" "}
-                    bulbs {""}
-                    {activePitch.lighting_system
-                      ? activePitch.lighting_system.power
-                      : ""}
-                  </li>
-                  <li>Grass: {activePitch.grass}</li>
-                  <li>Cost: {activePitch.price_per_hour} $ per hour</li>
-                  <li className="">{activePitch.description}</li>
-                </ul>
+                <ul className="flex flex-col text-gray-700 list-disc ml-8 gap-2 mt-2"></ul>
               )}
             </div>
           </div>
@@ -319,12 +217,12 @@ const SchedulePage = () => {
                   })}
                 </h2>
               </div>
-              <p className="mt-1 text-sm text-gray-500">{activePitch.name}</p>
+              {/* <p className="mt-1 text-sm text-gray-500">{activePitch.name}</p> */}
             </div>
             <div className="divide-y divide-gray-200">
               {timeSlots.map((time, idx) => {
                 const booked = isBooked(selectedPitch, time);
-                console.log(timeSlots);
+                // console.log(timeSlots);
                 const details = booked
                   ? getBookingDetails(selectedPitch, time)
                   : null;

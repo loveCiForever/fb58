@@ -1,0 +1,57 @@
+{
+    "success": true,
+    "message": "fetching data successful",
+    "data": {
+        "fields": [
+            {
+                "id": 1,
+                "name": "Field 1",
+                "short_description": "Standard 5-a-side field with artificial grass",
+                "full_description": "",
+                "type": "5-a-side",
+                "price": 200000,
+                "priceWithLights": 250000,
+                "lighting_system": {
+                    "number_bulbs": 10,
+                    "power": "1000W"
+                },
+                "openTime": "07:00",
+                "closeTime": "22:00",
+                "status": "available"
+            },
+            {
+                "id": 2,
+                "name": "Field 2",
+                "short_description": "Standard 7-a-side field with artificial grass",
+                "type": "7-a-side",
+                "price": 300000,
+                "priceWithLights": 350000,
+                "openTime": "07:00",
+                "closeTime": "22:00",
+                "status": "available"
+            },
+            {
+                "id": 3,
+                "name": "Field 3",
+                "short_description": "Standard 7-a-side field with artificial grass",
+                "type": "7-a-side",
+                "price": 300000,
+                "priceWithLights": 350000,
+                "openTime": "07:00",
+                "closeTime": "22:00",
+                "status": "available"
+            },
+            {
+                "id": 4,
+                "name": "Field 4",
+                "short_description": "Standard 7-a-side field with artificial grass",
+                "type": "7-a-side",
+                "price": 300000,
+                "priceWithLights": 350000,
+                "openTime": "07:00",
+                "closeTime": "22:00",
+                "status": "available"
+            }
+        ]
+    }
+}
