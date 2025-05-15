@@ -4,11 +4,51 @@ import { useState, useEffect, useContext } from "react";
 import Header from "../components/layout/Header.jsx";
 import Footer from "../components/layout/Footer.jsx";
 
+import ImageSlider from "../components/layout/ImageSlider.jsx";
+import Landing1 from "../assets/images/landing1.jpg";
+import Landing2 from "../assets/images/landing2.jpg";
+import Landing3 from "../assets/images/landing3.jpg";
+import Landing4 from "../assets/images/landing4.jpg";
+import Landing5 from "../assets/images/landing5.jpg";
+
 import { Search, MapPin, Calendar, Clock } from "lucide-react";
 
 const HomePage = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const images = [
+    {
+      url: Landing1,
+      alt: "Slide 1",
+      title: "Welcome to our website",
+      description: "Discover amazing products and services",
+    },
+    {
+      url: Landing2,
+      alt: "Slide 2",
+      title: "Special Offers",
+      description: "Check out our latest deals and promotions",
+    },
+    {
+      url: Landing3,
+      alt: "Slide 3",
+      title: "Join Our Community",
+      description: "Connect with like-minded individuals",
+    },
+    {
+      url: Landing4,
+      alt: "Slide 4",
+      title: "Customer Support",
+      description: "We're here to help you 24/7",
+    },
+    {
+      url: Landing5,
+      alt: "Slide 5",
+      title: "Medical Service",
+      description: "Our medical team always ready",
+    },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -42,8 +82,8 @@ const HomePage = () => {
                   </h1>
                   <p className="text-xl mb-8 opacity-80 max-w-xl">
                     Find and book football pitches near you in seconds. Play
-                    where and when you want. With Customer Care can support you
-                    24/7.
+                    anytime, anywhere. Our 24/7 Customer Care team is always
+                    ready to assist.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 text-lg">
                     <button
@@ -130,6 +170,10 @@ const HomePage = () => {
             </div>
           </section>
 
+          <section className="flex flex-col items-center justify-center w-full px-60 py-12 md:py-24 lg:py-32 h-screen">
+            <ImageSlider images={images} autoSlideInterval={5000} />
+          </section>
+
           <section className="flex items-center justify-center w-full py-12 md:py-24 lg:py-32 h-screen">
             <div className="container px-4 md:px-6">
               <div className="mx-auto max-w-5xl space-y-4">
@@ -185,7 +229,7 @@ const HomePage = () => {
                       </div>
                     </div>
                     <div className="flex items-end">
-                      <button className="flex p-2 items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white font-bold text-lg rounded-lg">
+                      <button className="flex p-2 items-center justify-center w-full bg-green-500 hover:bg-green-400 text-white font-bold text-lg rounded-lg">
                         <Search className="mr-2 h-4 w-4" strokeWidth={3} />{" "}
                         Search
                       </button>

@@ -174,7 +174,7 @@ const SchedulePage = () => {
                   onClick={() => handlePitchChange(pitch.id)}
                   className={`pitch-selection-btn px-4 py-3 rounded-lg text-left ${
                     pitch.id === selectedPitchId
-                      ? "bg-green-600 text-white"
+                      ? "bg-green-600/80 text-white"
                       : "bg-white border border-gray-300 hover:bg-gray-50"
                   }`}
                 >
