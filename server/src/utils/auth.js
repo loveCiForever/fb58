@@ -13,6 +13,14 @@ const generateVerificationCode = () => {
 };
 
 /**
+ * Generate a verification token
+ * @returns {string} JWT token
+ */
+const generateVerificationToken = () => {
+    return crypto.randomBytes(32).toString('hex');
+};
+
+/**
  * Generate a JWT token
  * @param {object} user - User object
  * @param {string} deviceId - Device ID
@@ -194,6 +202,7 @@ function ms(val) {
 
 module.exports = {
     generateVerificationCode,
+    generateVerificationToken,
     generateToken,
     generateDeviceId,
     getDeviceInfo,

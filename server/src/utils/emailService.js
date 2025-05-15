@@ -5,15 +5,18 @@ const emailTemplates = {
     // Mẫu email xác nhận đăng ký
     verifyAccount: {
         subject: 'Xác nhận tài khoản - Hệ thống đặt sân bóng',
-        html: (name, code) => `
+        html: (name, token) => `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
                 <h2 style="color: #4caf50; text-align: center;">Xác nhận tài khoản của bạn</h2>
                 <p>Xin chào ${name},</p>
-                <p>Cảm ơn bạn đã đăng ký tài khoản tại Hệ thống đặt sân bóng. Để hoàn tất quá trình đăng ký, vui lòng sử dụng mã xác nhận sau:</p>
-                <div style="background-color: #f5f5f5; padding: 10px; text-align: center; font-size: 24px; letter-spacing: 5px; margin: 20px 0; font-weight: bold;">
-                    ${code}
+                <p>Cảm ơn bạn đã đăng ký tài khoản tại Hệ thống đặt sân bóng. Để hoàn tất quá trình đăng ký, vui lòng nhấp vào liên kết sau:</p>
+                <div style="text-align: center; margin: 20px 0;">
+                    <a href="${process.env.FRONTEND_URL}/verify-account?token=${token}" 
+                       style="background-color: #4caf50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                        Xác nhận tài khoản
+                    </a>
                 </div>
-                <p>Mã xác nhận này sẽ hết hạn sau 24 giờ.</p>
+                <p>Liên kết này sẽ hết hạn sau 24 giờ.</p>
                 <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
                 <p style="margin-top: 30px; text-align: center; font-size: 12px; color: #808080;">
                     © ${new Date().getFullYear()} Hệ thống đặt sân bóng. Tất cả các quyền được bảo lưu.
@@ -114,7 +117,7 @@ const sendEmail = async (to, templateName, data) => {
         // Tạo nội dung email tùy thuộc vào loại template
         switch (templateName) {
             case 'verifyAccount':
-                html = template.html(data.name, data.code);
+                html = template.html(data.name, data.token);
                 break;
             case 'bookingConfirmation':
                 html = template.html(data.name, data.booking);

@@ -7,7 +7,7 @@ dotenv.config();
 module.exports = {
     development: {
         dialect: 'sqlite',
-        storage: process.env.DATABASE_PATH || path.join(__dirname, '../../database/football-field.sqlite'),
+        storage: process.env.DATABASE_PATH || path.join(__dirname, '../../database/booking_system.db'),
         logging: console.log,
         define: {
             timestamps: true,
@@ -25,7 +25,7 @@ module.exports = {
     },
     production: {
         dialect: 'sqlite',
-        storage: process.env.DATABASE_PATH || path.join(__dirname, '../../database/football-field.sqlite'),
+        storage: process.env.DATABASE_PATH || path.join(__dirname, '../../database/booking_system.db'),
         logging: false,
         define: {
             timestamps: true,

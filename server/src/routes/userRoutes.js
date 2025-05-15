@@ -5,7 +5,7 @@ const { authenticate, requireVerifiedUser } = require('../middlewares/auth');
 
 // Public routes
 router.post('/register', userController.register);
-router.post('/verify', userController.verifyAccount);
+router.get('/verify/:token', userController.verifyAccount);
 router.post('/resend-verification', userController.resendVerification);
 router.post('/login', userController.login);
 router.post('/forgot-password', userController.forgotPassword);

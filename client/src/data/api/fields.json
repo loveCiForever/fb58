@@ -5,7 +5,7 @@
         "fields": [
             {
                 "id": 1,
-                "name": "field 1",
+                "name": "Super Vip Field",
                 "short_description": "field1_short_des",
                 "full_description": "field1_full_des",
                 "grass_type": "kentucky bluegrass",
@@ -24,7 +24,7 @@
             },
             {
                 "id": 2,
-                "name": "field 2",
+                "name": "Main Field",
                 "short_description": "field2_short_des",
                 "full_description": "field2_full_des",
                 "grass_type": "matrix turf",
@@ -43,7 +43,7 @@
             },
             {
                 "id": 3,
-                "name": "field 3",
+                "name": "Sand Field",
                 "short_description": "field3_short_des",
                 "full_description": "field3_full_des",
                 "grass_type": "bermuda grass",
@@ -62,7 +62,7 @@
             },
             {
                 "id": 4,
-                "name": "field 4",
+                "name": "Mix Field",
                 "short_description": "field4_short_des",
                 "full_description": "field4_full_des",
                 "grass_type": "perennial ryegrass",
