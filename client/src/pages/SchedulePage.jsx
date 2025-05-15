@@ -14,13 +14,13 @@ import Footer from "../components/layout/Footer.jsx";
 import api_booked_time_slots_by_date from "../data/api/booked-time-slots-by-date.json";
 import api_fields from "../data/api/fields.json";
 
-
 const SchedulePage = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedPitchId, setSelectedPitchId] = useState(1);
   const [toggleAboutPitch, setToggleAboutPitch] = useState(false);
+  const [toggleBookingModal, setToggleBookingModal] = useState(false);
 
   const [bookings] = useState(api_booked_time_slots_by_date.data);
 
@@ -31,9 +31,7 @@ const SchedulePage = () => {
   const fieldData = bookings.fields.find((f) => f.id === selectedPitchId) || {};
   const bookedSlots = fieldData.booked_time_slots || [];
 
-  const isBooked = (time) => bookedSlots.some((b) => b.startTime === time);
-  const getBookingDetails = (time) =>
-    bookedSlots.find((b) => b.startTime === time);
+  console.log(fieldData);
 
   const parseTime = (t) => {
     const [hh, mm] = t.split(":").map(Number);
@@ -316,22 +314,23 @@ const SchedulePage = () => {
 
                     {isBooked && (
                       <div className="grid grid-cols-3 items-center w-full">
-                        <div className="text-right text-xl">
+                        <div className="text-right text-lg">
                           {booking.team1}
                         </div>
                         <div className="text-center text-lg font-bold">vs</div>
-                        <div className="text-left text-xl">{booking.team2}</div>
+                        <div className="text-left text-lg">{booking.team2}</div>
                       </div>
                     )}
 
                     <div>
                       <button
                         onClick={() =>
-                          alert(
-                            isBooked
-                              ? `Details for ${labelTime}`
-                              : `Book ${time}`
-                          )
+                          isBooked
+                            ? null
+                            : setToggleBookingModal({
+                                startTime: start,
+                                endTime: end,
+                              })
                         }
                         className={`px-3 py-1 text-md font-medium text-white rounded-md ${
                           isBooked
@@ -342,6 +341,18 @@ const SchedulePage = () => {
                         {isBooked ? "Details" : "Book Now"}
                       </button>
                     </div>
+
+                    {toggleBookingModal && (
+                      <div className="fixed inset-0 flex items-center justify-center bg-black/10 bg-opacity-50 z-50">
+                        <div className="bg-white rounded-lg w-[600px] py-5 px-10 max-h-[90vh] overflow-auto relative">
+                          <h1 className="text-xl font-bold mb-6">
+                            Field Booking Form
+                          </h1>
+
+                          <h2 className="text-lg">{fieldData.field}</h2>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}

@@ -5,7 +5,7 @@
         "date": "2023-05-16",
         "fields": [
             {
-                "field": "Field 1",
+                "field": "Super Vip Field",
                 "id": 1,
                 "booked_time_slots": [
                     {
@@ -35,7 +35,7 @@
                 ]
             },
             {
-                "field": "Field 2",
+                "field": "Main Field",
                 "id": 2,
                 "booked_time_slots": [
                     {
