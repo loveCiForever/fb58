@@ -14,6 +14,7 @@ import AboutPitch from "../components/layout/AboutPitch.jsx";
 import api_booked_time_slots_by_date from "../data/api/booked-time-slots-by-date.json";
 import api_fields from "../data/api/fields.json";
 
+
 const SchedulePage = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);

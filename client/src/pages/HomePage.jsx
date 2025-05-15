@@ -4,6 +4,7 @@ import { useState, useEffect, useContext } from "react";
 import Header from "../components/layout/Header.jsx";
 import Footer from "../components/layout/Footer.jsx";
 
+
 import ImageSlider from "../components/layout/ImageSlider.jsx";
 import Landing1 from "../assets/images/landing1.jpg";
 import Landing2 from "../assets/images/landing2.jpg";
@@ -86,6 +87,7 @@ const HomePage = () => {
                     Find and book football pitches near you in seconds. Play
                     anytime, anywhere. Our 24/7 Customer Care team is always
                     ready to assist.
+
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 text-lg">
                     <button
@@ -148,12 +150,12 @@ const HomePage = () => {
               </div>
             </div>
           </section>
-
           <section className="flex flex-col items-center justify-center w-full px-60 py-12 md:py-24 lg:py-32 h-screen">
             <ImageSlider images={images} autoSlideInterval={5000} />
           </section>
 
           <FieldSearch />
+
         </main>
 
         <Footer />
