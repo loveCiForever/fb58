@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs'); const jwt = require('jsonwebtoken'); const { User, UserSession } = require('../models'); const { generateVerificationCode, generateToken, generateDeviceId, getDeviceInfo, createUserSession, enforceSingleDevicePolicy, invalidateSession } = require('../utils/auth'); const { sendEmail } = require('../utils/emailService');
+const bcrypt = require('bcryptjs'); const jwt = require('jsonwebtoken'); const { Op } = require('sequelize'); const { User, UserSession } = require('../models'); const { generateVerificationToken, generateToken, generateDeviceId, getDeviceInfo, createUserSession, enforceSingleDevicePolicy, invalidateSession } = require('../utils/auth'); const { sendEmail } = require('../utils/emailService');
 
 /**
  * Register a new user
@@ -14,12 +14,13 @@ const register = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'User with this email already exists',
-                data: {}
+                error: null
             });
         }
 
-        // Generate verification code
-        const verificationCode = generateVerificationCode();
+        // Generate verification token
+        const verificationToken = generateVerificationToken();
+        const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
         // Create user
         const user = await User.create({
@@ -27,19 +28,20 @@ const register = async (req, res) => {
             email,
             phone,
             password,
-            verificationCode
+            verificationToken,
+            verificationTokenExpires
         });
 
-        // Gửi mã xác nhận qua email
+        // Send verification email
         try {
             await sendEmail(email, 'verifyAccount', {
                 name: user.name,
-                code: verificationCode
+                token: verificationToken
             });
-            console.log(`Đã gửi mã xác nhận cho ${email}: ${verificationCode}`);
+            console.log(`Verification email sent to ${email}`);
         } catch (emailError) {
-            console.error('Lỗi gửi email xác nhận:', emailError);
-            // Vẫn tiếp tục mặc dù email có thể không gửi được
+            console.error('Error sending verification email:', emailError);
+            // Continue even if email fails
         }
 
         // Return success
@@ -62,26 +64,32 @@ const register = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Registration failed. Please try again.',
-            data: {}
+            error: error.stack
         });
     }
 };
 
 /**
- * Verify account with verification code
- * @route POST /api/users/verify
+ * Verify account with token
+ * @route GET /api/users/verify/:token
  */
 const verifyAccount = async (req, res) => {
     try {
-        const { email, code } = req.body;
+        const { token } = req.params;
 
-        // Find user
-        const user = await User.findOne({ where: { email } });
+        // Find user with valid token
+        const user = await User.findOne({
+            where: {
+                verificationToken: token,
+                verificationTokenExpires: { [Op.gt]: new Date() }
+            }
+        });
+
         if (!user) {
-            return res.status(404).json({
+            return res.status(400).json({
                 success: false,
-                message: 'User not found',
-                data: {}
+                message: 'Invalid or expired verification token',
+                error: null
             });
         }
 
@@ -90,16 +98,7 @@ const verifyAccount = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Account already verified',
-                data: {}
-            });
-        }
-
-        // Verify code
-        if (user.verificationCode !== code) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid verification code',
-                data: {}
+                error: null
             });
         }
 
@@ -109,14 +108,15 @@ const verifyAccount = async (req, res) => {
 
         // Update user
         user.isVerified = true;
-        user.verificationCode = null;
+        user.verificationToken = null;
+        user.verificationTokenExpires = null;
         await user.save();
 
         // Generate token
-        const token = generateToken(user, deviceId);
+        const authToken = generateToken(user, deviceId);
 
         // Create user session
-        await createUserSession(user.id, token, deviceId, deviceInfo);
+        await createUserSession(user.id, authToken, deviceId, deviceInfo);
 
         // Enforce single device policy
         await enforceSingleDevicePolicy(user.id, deviceId);
@@ -134,7 +134,7 @@ const verifyAccount = async (req, res) => {
                     isVerified: user.isVerified,
                     role: user.role
                 },
-                token
+                token: authToken
             }
         });
     } catch (error) {
@@ -142,7 +142,7 @@ const verifyAccount = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Account verification failed. Please try again.',
-            data: {}
+            error: error.stack
         });
     }
 };
@@ -354,65 +354,69 @@ const changePassword = async (req, res) => {
 };
 
 /**
- * Gửi lại mã xác nhận cho tài khoản
+ * Resend verification email
  * @route POST /api/users/resend-verification
  */
 const resendVerification = async (req, res) => {
     try {
         const { email } = req.body;
 
-        // Tìm người dùng
+        // Find user
         const user = await User.findOne({ where: { email } });
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: 'Không tìm thấy người dùng',
-                data: {}
+                message: 'User not found',
+                error: null
             });
         }
 
-        // Kiểm tra nếu đã xác minh
+        // Check if already verified
         if (user.isVerified) {
             return res.status(400).json({
                 success: false,
-                message: 'Tài khoản đã được xác minh',
-                data: {}
+                message: 'Account already verified',
+                error: null
             });
         }
 
-        // Tạo mã xác nhận mới
-        const verificationCode = generateVerificationCode();
-        user.verificationCode = verificationCode;
+        // Generate new verification token
+        const verificationToken = generateVerificationToken();
+        const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        // Update user
+        user.verificationToken = verificationToken;
+        user.verificationTokenExpires = verificationTokenExpires;
         await user.save();
 
-        // Gửi mã xác nhận qua email
+        // Send verification email
         try {
             await sendEmail(email, 'verifyAccount', {
                 name: user.name,
-                code: verificationCode
+                token: verificationToken
             });
-            console.log(`Đã gửi lại mã xác nhận cho ${email}: ${verificationCode}`);
+            console.log(`Verification email resent to ${email}`);
         } catch (emailError) {
-            console.error('Lỗi gửi email xác nhận:', emailError);
+            console.error('Error sending verification email:', emailError);
             return res.status(500).json({
                 success: false,
-                message: 'Không thể gửi email xác nhận. Vui lòng thử lại.',
-                data: {}
+                message: 'Failed to send verification email. Please try again.',
+                error: emailError.stack
             });
         }
 
-        // Trả về thành công
+        // Return success
         res.status(200).json({
             success: true,
-            message: 'Đã gửi lại mã xác nhận. Vui lòng kiểm tra email của bạn.',
+            message: 'Verification email sent. Please check your inbox.',
             data: {}
         });
     } catch (error) {
-        console.error('Lỗi gửi lại mã xác nhận:', error);
+        console.error('Resend verification error:', error);
         res.status(500).json({
             success: false,
-            message: 'Gửi lại mã xác nhận thất bại. Vui lòng thử lại.',
-            data: {}
+            message: 'Failed to resend verification email. Please try again.',
+            error: error.stack
         });
     }
 };
