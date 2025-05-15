@@ -1,1 +1,30 @@
+# Dependency directories
 node_modules/
+
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Database files
+database/*.db
+database/*.sqlite
+
+# Uploaded files
+uploads/
+
+# Coverage directory
+coverage/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo 
