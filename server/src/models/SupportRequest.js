@@ -1,7 +1,23 @@
-const { DataTypes } = require('sequelize');
+'use strict';
 
-module.exports = (sequelize) => {
-    const SupportRequest = sequelize.define('SupportRequest', {
+const { Model } = require('sequelize');
+
+module.exports = (sequelize, DataTypes) => {
+    class SupportRequest extends Model {
+        static associate(models) {
+            SupportRequest.belongsTo(models.User, {
+                foreignKey: 'userId',
+                as: 'user'
+            });
+
+            SupportRequest.belongsTo(models.Booking, {
+                foreignKey: 'bookingId',
+                as: 'booking'
+            });
+        }
+    }
+
+    SupportRequest.init({
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -11,7 +27,7 @@ module.exports = (sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: 'Users',
+                model: 'users',
                 key: 'id'
             }
         },
@@ -23,23 +39,45 @@ module.exports = (sequelize) => {
             type: DataTypes.TEXT,
             allowNull: false
         },
+        category: {
+            type: DataTypes.ENUM('booking', 'payment', 'technical', 'feedback', 'other'),
+            allowNull: false
+        },
+        bookingId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'bookings',
+                key: 'id'
+            }
+        },
         status: {
             type: DataTypes.ENUM('open', 'in_progress', 'resolved', 'closed'),
             defaultValue: 'open'
         },
-        response: {
+        priority: {
+            type: DataTypes.ENUM('low', 'medium', 'high'),
+            defaultValue: 'medium'
+        },
+        attachments: {
+            type: DataTypes.JSON,
+            allowNull: true,
+            defaultValue: []
+        },
+        responseMessage: {
             type: DataTypes.TEXT,
             allowNull: true
         },
-        createdAt: {
+        resolvedAt: {
             type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW
-        },
-        updatedAt: {
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW
+            allowNull: true
         }
+    }, {
+        sequelize,
+        modelName: 'SupportRequest',
+        tableName: 'support_requests',
+        timestamps: true
     });
 
     return SupportRequest;
-};
+}; 

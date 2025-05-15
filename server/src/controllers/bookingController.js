@@ -1,418 +1,407 @@
-const { Booking, Field, User, Service, BookingService, sequelize } = require('../models');
+const { Booking, User, Field, Service, BookingService } = require('../models');
 const { Op } = require('sequelize');
+const ApiError = require('../utils/apiError');
+const { validateTimeOverlap } = require('../utils/dateTimeHelper');
+const { sendEmail } = require('../utils/emailService');
 
 // Create a new booking
-exports.createBooking = async (req, res) => {
-    const transaction = await sequelize.transaction();
-
+exports.createBooking = async (req, res, next) => {
     try {
         const {
             fieldId,
             date,
             startTime,
             endTime,
-            useLights,
-            serviceIds = [],
-            quantities = [],
-            paymentMethod
+            services,
+            notes
         } = req.body;
 
-        // Basic validation
-        if (!fieldId || !date || !startTime || !endTime) {
-            await transaction.rollback();
-            return res.status(400).json({ message: 'Field, date, start time and end time are required' });
-        }
+        // Get the user ID from the authenticated user
+        const userId = req.user.id;
 
-        // Check if selected serviceIds and quantities have the same length
-        if (serviceIds.length !== quantities.length) {
-            await transaction.rollback();
-            return res.status(400).json({ message: 'Service IDs and quantities must have the same length' });
-        }
-
-        // Get field details for pricing
-        const field = await Field.findByPk(fieldId, { transaction });
+        // Validate field exists
+        const field = await Field.findByPk(fieldId);
         if (!field) {
-            await transaction.rollback();
-            return res.status(404).json({ message: 'Field not found' });
+            return next(new ApiError('Field not found', 404));
         }
 
-        // Check if field is available at the requested time
-        const existingBooking = await Booking.findOne({
-            where: {
-                fieldId,
-                date,
-                bookingStatus: {
-                    [Op.notIn]: ['cancelled', 'no_show']
-                },
-                [Op.or]: [
-                    {
-                        startTime: {
-                            [Op.lt]: endTime
-                        },
-                        endTime: {
-                            [Op.gt]: startTime
-                        }
-                    },
-                    {
-                        startTime,
-                        endTime
-                    }
-                ]
-            },
-            transaction
-        });
-
-        if (existingBooking) {
-            await transaction.rollback();
-            return res.status(400).json({ message: 'Field is already booked for the selected time' });
+        // Check if the field is available for the requested time
+        const isAvailable = await checkFieldAvailability(fieldId, date, startTime, endTime);
+        if (!isAvailable) {
+            return next(new ApiError('Field is not available for the selected time slot', 400));
         }
 
-        // Calculate duration in hours
-        const startHours = parseInt(startTime.split(':')[0]);
-        const startMinutes = parseInt(startTime.split(':')[1]);
-        const endHours = parseInt(endTime.split(':')[0]);
-        const endMinutes = parseInt(endTime.split(':')[1]);
+        // Calculate field booking price
+        const fieldPrice = calculateFieldPrice(field, startTime, endTime);
 
-        const startTimeMinutes = startHours * 60 + startMinutes;
-        const endTimeMinutes = endHours * 60 + endMinutes;
-        const durationHours = (endTimeMinutes - startTimeMinutes) / 60;
+        // Calculate services price if any
+        let servicesPrice = 0;
+        let serviceItems = [];
 
-        // Calculate field price based on whether lights are used or not
-        const fieldPrice = useLights ? field.priceWithLights : field.price;
-        const fieldTotal = fieldPrice * durationHours;
-
-        // Calculate services total
-        let servicesTotal = 0;
-        const bookingServices = [];
-
-        if (serviceIds.length > 0) {
-            const services = await Service.findAll({
-                where: {
-                    id: {
-                        [Op.in]: serviceIds
-                    },
-                    status: 'active'
-                },
-                transaction
+        if (services && services.length > 0) {
+            const serviceIds = services.map(service => service.id);
+            serviceItems = await Service.findAll({
+                where: { id: { [Op.in]: serviceIds } }
             });
 
-            if (services.length !== serviceIds.length) {
-                await transaction.rollback();
-                return res.status(400).json({ message: 'One or more services are invalid or inactive' });
+            if (serviceItems.length !== serviceIds.length) {
+                return next(new ApiError('One or more services not found', 404));
             }
 
-            // Create booking services entries
-            for (let i = 0; i < serviceIds.length; i++) {
-                const service = services.find(s => s.id === parseInt(serviceIds[i]));
-                const quantity = parseInt(quantities[i]);
-
-                if (!service) {
-                    await transaction.rollback();
-                    return res.status(400).json({ message: `Service with ID ${serviceIds[i]} not found` });
-                }
-
-                if (isNaN(quantity) || quantity <= 0) {
-                    await transaction.rollback();
-                    return res.status(400).json({ message: 'Quantity must be a positive number' });
-                }
-
-                const serviceTotal = service.price * quantity;
-                servicesTotal += serviceTotal;
-
-                bookingServices.push({
-                    serviceId: service.id,
-                    quantity,
-                    price: service.price,
-                    totalPrice: serviceTotal
-                });
-            }
+            servicesPrice = serviceItems.reduce((total, service) => {
+                const requestedService = services.find(s => s.id === service.id);
+                return total + (service.price * (requestedService.quantity || 1));
+            }, 0);
         }
 
-        // Calculate total and deposit
-        const totalPrice = fieldTotal + servicesTotal;
-        const depositAmount = totalPrice * 0.3; // 30% deposit
+        // Calculate total price
+        const totalPrice = fieldPrice + servicesPrice;
 
-        // Create booking
+        // Create the booking
         const booking = await Booking.create({
-            userId: req.user.id,
+            userId,
             fieldId,
             date,
             startTime,
             endTime,
-            useLights,
             totalPrice,
-            depositAmount,
-            paymentMethod,
             paymentStatus: 'pending',
-            bookingStatus: 'pending'
-        }, { transaction });
+            notes
+        });
 
-        // Create booking services
-        if (bookingServices.length > 0) {
-            for (const serviceData of bookingServices) {
-                await BookingService.create({
+        // Add services to booking if any
+        if (serviceItems.length > 0) {
+            const bookingServices = serviceItems.map(service => {
+                const requestedService = services.find(s => s.id === service.id);
+                return {
                     bookingId: booking.id,
-                    serviceId: serviceData.serviceId,
-                    quantity: serviceData.quantity,
-                    price: serviceData.price,
-                    totalPrice: serviceData.totalPrice
-                }, { transaction });
-            }
+                    serviceId: service.id,
+                    quantity: requestedService.quantity || 1,
+                    price: service.price
+                };
+            });
+
+            await BookingService.bulkCreate(bookingServices);
         }
 
-        // Commit transaction
-        await transaction.commit();
+        // Lấy thông tin người dùng để gửi email
+        const user = await User.findByPk(userId);
 
-        return res.status(201).json({
-            message: 'Booking created successfully',
-            booking: {
-                ...booking.toJSON(),
-                fieldPrice: fieldTotal,
-                servicesTotal,
-                depositAmount
-            }
+        // Tính thời hạn thanh toán (24 giờ sau khi đặt sân)
+        const paymentDeadline = new Date();
+        paymentDeadline.setHours(paymentDeadline.getHours() + 24);
+        const formattedDeadline = paymentDeadline.toLocaleString('vi-VN');
+
+        // Gửi email xác nhận đặt sân
+        try {
+            await sendEmail(user.email, 'bookingConfirmation', {
+                name: user.name,
+                booking: {
+                    bookingReference: booking.bookingReference,
+                    fieldName: field.name,
+                    date: booking.date,
+                    startTime: booking.startTime,
+                    endTime: booking.endTime,
+                    totalPrice: booking.totalPrice.toLocaleString('vi-VN'),
+                    paymentDeadline: formattedDeadline
+                }
+            });
+            console.log(`Đã gửi xác nhận đặt sân cho ${user.email}`);
+        } catch (emailError) {
+            console.error('Lỗi gửi email xác nhận đặt sân:', emailError);
+            // Vẫn tiếp tục vì đặt sân đã thành công
+        }
+
+        res.status(201).json({
+            success: true,
+            data: booking
         });
     } catch (error) {
-        await transaction.rollback();
-        console.error('Create booking error:', error);
-        return res.status(500).json({ message: 'Server error' });
+        next(error);
     }
 };
 
-// Get user's bookings
-exports.getUserBookings = async (req, res) => {
+// Get all bookings (admin)
+exports.getAllBookings = async (req, res, next) => {
     try {
+        const { status, date, fieldId, userId } = req.query;
+        const queryOptions = {};
+
+        // Filter options
+        if (status) queryOptions.status = status;
+        if (date) queryOptions.date = date;
+        if (fieldId) queryOptions.fieldId = fieldId;
+        if (userId) queryOptions.userId = userId;
+
         const bookings = await Booking.findAll({
-            where: {
-                userId: req.user.id
-            },
+            where: queryOptions,
             include: [
-                {
-                    model: Field,
-                    attributes: ['id', 'name', 'type']
-                }
+                { model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone'] },
+                { model: Field, as: 'field', attributes: ['id', 'name', 'type', 'price'] },
+                { model: Service, as: 'services', through: { attributes: ['quantity', 'price'] } }
             ],
-            order: [
-                ['date', 'DESC'],
-                ['startTime', 'ASC']
-            ]
+            order: [['date', 'DESC'], ['startTime', 'ASC']]
         });
 
-        return res.status(200).json({ bookings });
+        res.status(200).json({
+            success: true,
+            count: bookings.length,
+            data: bookings
+        });
     } catch (error) {
-        console.error('Get user bookings error:', error);
-        return res.status(500).json({ message: 'Server error' });
+        next(error);
+    }
+};
+
+// Get user bookings
+exports.getUserBookings = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const { status } = req.query;
+
+        const queryOptions = { userId };
+        if (status) queryOptions.status = status;
+
+        const bookings = await Booking.findAll({
+            where: queryOptions,
+            include: [
+                { model: Field, as: 'field', attributes: ['id', 'name', 'type', 'price'] },
+                { model: Service, as: 'services', through: { attributes: ['quantity', 'price'] } }
+            ],
+            order: [['date', 'DESC'], ['startTime', 'ASC']]
+        });
+
+        res.status(200).json({
+            success: true,
+            count: bookings.length,
+            data: bookings
+        });
+    } catch (error) {
+        next(error);
     }
 };
 
 // Get booking by ID
-exports.getBookingById = async (req, res) => {
+exports.getBookingById = async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        const booking = await Booking.findOne({
-            where: {
-                id,
-                userId: req.user.id
-            },
+        const booking = await Booking.findByPk(id, {
             include: [
-                {
-                    model: Field,
-                    attributes: ['id', 'name', 'type']
-                },
-                {
-                    model: BookingService,
-                    include: [
-                        {
-                            model: Service,
-                            attributes: ['id', 'name', 'description']
-                        }
-                    ]
-                }
+                { model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone'] },
+                { model: Field, as: 'field', attributes: ['id', 'name', 'type', 'price', 'location'] },
+                { model: Service, as: 'services', through: { attributes: ['quantity', 'price'] } }
             ]
         });
 
         if (!booking) {
-            return res.status(404).json({ message: 'Booking not found' });
+            return next(new ApiError('Booking not found', 404));
         }
 
-        return res.status(200).json({ booking });
+        // Check if user is authorized to view this booking
+        if (!req.user.isAdmin && booking.userId !== req.user.id) {
+            return next(new ApiError('Not authorized to access this booking', 403));
+        }
+
+        res.status(200).json({
+            success: true,
+            data: booking
+        });
     } catch (error) {
-        console.error('Get booking error:', error);
-        return res.status(500).json({ message: 'Server error' });
+        next(error);
     }
 };
 
-// Update booking payment proof
-exports.updatePaymentProof = async (req, res) => {
+// Update booking status
+exports.updateBookingStatus = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { paymentProof } = req.body;
-
-        if (!paymentProof) {
-            return res.status(400).json({ message: 'Payment proof is required' });
-        }
-
-        const booking = await Booking.findOne({
-            where: {
-                id,
-                userId: req.user.id
-            }
-        });
-
-        if (!booking) {
-            return res.status(404).json({ message: 'Booking not found' });
-        }
-
-        if (booking.paymentStatus !== 'pending') {
-            return res.status(400).json({ message: 'Payment has already been processed' });
-        }
-
-        booking.paymentProof = paymentProof;
-        booking.paymentStatus = 'deposit_paid'; // Change to deposit_paid; admin will verify
-        await booking.save();
-
-        return res.status(200).json({
-            message: 'Payment proof uploaded successfully',
-            booking
-        });
-    } catch (error) {
-        console.error('Update payment proof error:', error);
-        return res.status(500).json({ message: 'Server error' });
-    }
-};
-
-// Cancel booking
-exports.cancelBooking = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { cancellationReason } = req.body;
-
-        if (!cancellationReason) {
-            return res.status(400).json({ message: 'Cancellation reason is required' });
-        }
-
-        const booking = await Booking.findOne({
-            where: {
-                id,
-                userId: req.user.id
-            }
-        });
-
-        if (!booking) {
-            return res.status(404).json({ message: 'Booking not found' });
-        }
-
-        if (['completed', 'cancelled', 'no_show'].includes(booking.bookingStatus)) {
-            return res.status(400).json({ message: `Booking cannot be cancelled because it is already ${booking.bookingStatus}` });
-        }
-
-        // Check if cancellation is within 24 hours of booking time
-        const bookingDateTime = new Date(`${booking.date}T${booking.startTime}`);
-        const now = new Date();
-        const hoursDifference = (bookingDateTime - now) / (1000 * 60 * 60);
-
-        // Update booking
-        booking.cancellationReason = cancellationReason;
-        booking.bookingStatus = 'cancelled';
-
-        // Handle refund status based on cancellation time
-        if (booking.paymentStatus !== 'pending' && hoursDifference < 24) {
-            booking.paymentStatus = 'cancelled'; // No refund for late cancellation
-        } else if (booking.paymentStatus !== 'pending') {
-            booking.paymentStatus = 'refunded'; // Refund for early cancellation
-        }
-
-        await booking.save();
-
-        return res.status(200).json({
-            message: 'Booking cancelled successfully',
-            refundStatus: booking.paymentStatus,
-            booking
-        });
-    } catch (error) {
-        console.error('Cancel booking error:', error);
-        return res.status(500).json({ message: 'Server error' });
-    }
-};
-
-// Admin: Get all bookings
-exports.getAllBookings = async (req, res) => {
-    try {
-        const { status, date, fieldId } = req.query;
-
-        // Build query conditions
-        const whereConditions = {};
-
-        if (status) {
-            whereConditions.bookingStatus = status;
-        }
-
-        if (date) {
-            whereConditions.date = date;
-        }
-
-        if (fieldId) {
-            whereConditions.fieldId = fieldId;
-        }
-
-        const bookings = await Booking.findAll({
-            where: whereConditions,
-            include: [
-                {
-                    model: Field,
-                    attributes: ['id', 'name', 'type']
-                },
-                {
-                    model: User,
-                    attributes: ['id', 'name', 'email', 'phone']
-                }
-            ],
-            order: [
-                ['date', 'DESC'],
-                ['startTime', 'ASC']
-            ]
-        });
-
-        return res.status(200).json({ bookings });
-    } catch (error) {
-        console.error('Get all bookings error:', error);
-        return res.status(500).json({ message: 'Server error' });
-    }
-};
-
-// Admin: Update booking status
-exports.updateBookingStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { bookingStatus, paymentStatus, notes } = req.body;
+        const { status, cancelReason } = req.body;
 
         const booking = await Booking.findByPk(id);
 
         if (!booking) {
-            return res.status(404).json({ message: 'Booking not found' });
+            return next(new ApiError('Booking not found', 404));
         }
 
-        if (bookingStatus) {
-            booking.bookingStatus = bookingStatus;
+        // Only admin can update status except for cancellations
+        if (!req.user.isAdmin && (status !== 'cancelled' || booking.userId !== req.user.id)) {
+            return next(new ApiError('Not authorized to update this booking', 403));
         }
 
-        if (paymentStatus) {
-            booking.paymentStatus = paymentStatus;
-        }
+        // Update status logic
+        booking.status = status;
 
-        if (notes !== undefined) {
-            booking.notes = notes;
+        // Handle cancellation
+        if (status === 'cancelled') {
+            booking.cancelledAt = new Date();
+            booking.cancelReason = cancelReason;
         }
 
         await booking.save();
 
-        return res.status(200).json({
-            message: 'Booking updated successfully',
-            booking
+        // Lấy thông tin người dùng và sân bóng để gửi email
+        const user = await User.findByPk(booking.userId);
+        const field = await Field.findByPk(booking.fieldId);
+
+        // Gửi email thông báo trạng thái đặt sân đã thay đổi
+        try {
+            const statusMessages = {
+                'confirmed': 'Đặt sân đã được xác nhận',
+                'cancelled': 'Đặt sân đã bị hủy',
+                'completed': 'Đặt sân đã hoàn thành'
+            };
+
+            const emailSubject = `${statusMessages[status]} - Hệ thống đặt sân bóng`;
+            const emailContent = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                    <h2 style="color: #4caf50; text-align: center;">${statusMessages[status]}</h2>
+                    <p>Xin chào ${user.name},</p>
+                    <p>Đặt sân của bạn với thông tin sau đã được ${status === 'confirmed' ? 'xác nhận' : status === 'cancelled' ? 'hủy' : 'hoàn thành'}:</p>
+                    <div style="background-color: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                        <p><strong>Mã đặt sân:</strong> ${booking.bookingReference}</p>
+                        <p><strong>Sân bóng:</strong> ${field.name}</p>
+                        <p><strong>Ngày:</strong> ${booking.date}</p>
+                        <p><strong>Thời gian:</strong> ${booking.startTime} - ${booking.endTime}</p>
+                        ${status === 'cancelled' ? `<p><strong>Lý do hủy:</strong> ${booking.cancelReason || 'Không có lý do được cung cấp'}</p>` : ''}
+                    </div>
+                    ${status === 'confirmed' ? '<p>Vui lòng thanh toán đúng hạn để hoàn tất đặt sân.</p>' : ''}
+                    <p>Nếu bạn có thắc mắc, vui lòng liên hệ với chúng tôi.</p>
+                    <p style="margin-top: 30px; text-align: center; font-size: 12px; color: #808080;">
+                        © ${new Date().getFullYear()} Hệ thống đặt sân bóng. Tất cả các quyền được bảo lưu.
+                    </p>
+                </div>
+            `;
+
+            // Chỉ gửi email khi trạng thái là confirmed, cancelled hoặc completed
+            if (['confirmed', 'cancelled', 'completed'].includes(status)) {
+                await sendEmail(user.email, 'custom', {
+                    subject: emailSubject,
+                    html: emailContent
+                });
+                console.log(`Đã gửi email thông báo trạng thái ${status} cho ${user.email}`);
+            }
+        } catch (emailError) {
+            console.error('Lỗi gửi email thông báo trạng thái đặt sân:', emailError);
+            // Vẫn tiếp tục vì cập nhật trạng thái đặt sân đã thành công
+        }
+
+        res.status(200).json({
+            success: true,
+            data: booking
         });
     } catch (error) {
-        console.error('Update booking status error:', error);
-        return res.status(500).json({ message: 'Server error' });
+        next(error);
     }
 };
+
+// Update payment status
+exports.updatePaymentStatus = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { paymentStatus, paymentProof } = req.body;
+
+        const booking = await Booking.findByPk(id);
+
+        if (!booking) {
+            return next(new ApiError('Booking not found', 404));
+        }
+
+        // Only admin can update payment status directly
+        // Regular users can only upload payment proof
+        if (!req.user.isAdmin && req.user.id !== booking.userId) {
+            return next(new ApiError('Not authorized to update this booking', 403));
+        }
+
+        if (req.user.isAdmin) {
+            booking.paymentStatus = paymentStatus;
+        }
+
+        // Handle payment proof upload
+        if (paymentProof) {
+            booking.paymentProof = paymentProof;
+            if (!req.user.isAdmin) {
+                booking.paymentStatus = 'pending'; // Reset to pending for admin verification
+            }
+        }
+
+        await booking.save();
+
+        res.status(200).json({
+            success: true,
+            data: booking
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Delete booking (admin only or user can cancel)
+exports.deleteBooking = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        const booking = await Booking.findByPk(id);
+
+        if (!booking) {
+            return next(new ApiError('Booking not found', 404));
+        }
+
+        // Only admin can delete bookings
+        // Users can only cancel bookings
+        if (!req.user.isAdmin && req.user.id === booking.userId) {
+            booking.status = 'cancelled';
+            booking.cancelledAt = new Date();
+            booking.cancelReason = 'Cancelled by user';
+            await booking.save();
+        } else if (req.user.isAdmin) {
+            await booking.destroy();
+        } else {
+            return next(new ApiError('Not authorized to delete this booking', 403));
+        }
+
+        res.status(200).json({
+            success: true,
+            message: req.user.isAdmin ? 'Booking deleted successfully' : 'Booking cancelled successfully'
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Helper function to check field availability
+const checkFieldAvailability = async (fieldId, date, startTime, endTime) => {
+    // Find any overlapping bookings
+    const overlappingBookings = await Booking.findAll({
+        where: {
+            fieldId,
+            date,
+            status: {
+                [Op.notIn]: ['cancelled']
+            },
+            [Op.or]: [
+                {
+                    startTime: {
+                        [Op.lt]: endTime
+                    },
+                    endTime: {
+                        [Op.gt]: startTime
+                    }
+                }
+            ]
+        }
+    });
+
+    return overlappingBookings.length === 0;
+};
+
+// Helper function to calculate field booking price
+const calculateFieldPrice = (field, startTime, endTime) => {
+    // Parse times to calculate duration in hours
+    const start = new Date(`2000-01-01T${startTime}`);
+    const end = new Date(`2000-01-01T${endTime}`);
+    const durationHours = (end - start) / (1000 * 60 * 60);
+
+    // Calculate price based on field hourly rate
+    return field.price * durationHours;
+}; 

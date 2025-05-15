@@ -1,7 +1,15 @@
-const { DataTypes } = require('sequelize');
+'use strict';
 
-module.exports = (sequelize) => {
-    const BookingService = sequelize.define('BookingService', {
+const { Model } = require('sequelize');
+
+module.exports = (sequelize, DataTypes) => {
+    class BookingService extends Model {
+        static associate(models) {
+            // BookingService không cần quan hệ trực tiếp vì nó là bảng trung gian
+        }
+    }
+
+    BookingService.init({
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true,
@@ -11,7 +19,7 @@ module.exports = (sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: 'Bookings',
+                model: 'bookings',
                 key: 'id'
             }
         },
@@ -19,7 +27,7 @@ module.exports = (sequelize) => {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: 'Services',
+                model: 'services',
                 key: 'id'
             }
         },
@@ -29,13 +37,14 @@ module.exports = (sequelize) => {
             defaultValue: 1
         },
         price: {
-            type: DataTypes.FLOAT,
-            allowNull: false
-        },
-        totalPrice: {
-            type: DataTypes.FLOAT,
+            type: DataTypes.DECIMAL(10, 2),
             allowNull: false
         }
+    }, {
+        sequelize,
+        modelName: 'BookingService',
+        tableName: 'booking_services',
+        timestamps: true
     });
 
     return BookingService;

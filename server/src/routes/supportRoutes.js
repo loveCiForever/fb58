@@ -1,15 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const supportController = require('../controllers/supportController');
-const { authenticate, isAdmin } = require('../middleware/auth');
+const { authenticate, authorizeAdmin } = require('../middlewares/auth');
 
-// User routes
-router.post('/', authenticate, supportController.createSupportRequest);
-router.get('/user', authenticate, supportController.getUserSupportRequests);
-router.get('/user/:id', authenticate, supportController.getSupportRequestById);
+// For now, just create a placeholder response since we'll implement the controller later
+router.get('/', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'Support routes are set up and will be implemented soon',
+        data: []
+    });
+});
 
-// Admin routes
-router.get('/all', authenticate, isAdmin, supportController.getAllSupportRequests);
-router.put('/:id', authenticate, isAdmin, supportController.updateSupportRequest);
-
-module.exports = router;
+module.exports = router; 

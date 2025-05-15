@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const reviewController = require('../controllers/reviewController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorizeAdmin } = require('../middlewares/auth');
 
-// Public routes
-router.get('/field/:fieldId', reviewController.getFieldReviews);
+// For now, just create a placeholder response since we'll implement the controller later
+router.get('/', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'Review routes are set up and will be implemented soon',
+        data: []
+    });
+});
 
-// User routes
-router.post('/field/:fieldId', authenticate, reviewController.createReview);
-router.put('/:id', authenticate, reviewController.updateReview);
-router.delete('/:id', authenticate, reviewController.deleteReview);
-
-module.exports = router;
+module.exports = router; 

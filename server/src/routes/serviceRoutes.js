@@ -1,15 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const serviceController = require('../controllers/serviceController');
-const { authenticate, isAdmin } = require('../middleware/auth');
+const { authenticate, authorizeAdmin } = require('../middlewares/auth');
 
-// Public routes
-router.get('/', serviceController.getAllServices);
-router.get('/:id', serviceController.getServiceById);
+// For now, just create a placeholder response since we'll implement the controller later
+router.get('/', (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'Service routes are set up and will be implemented soon',
+        data: []
+    });
+});
 
-// Admin routes
-router.post('/', authenticate, isAdmin, serviceController.createService);
-router.put('/:id', authenticate, isAdmin, serviceController.updateService);
-router.delete('/:id', authenticate, isAdmin, serviceController.deleteService);
-
-module.exports = router;
+module.exports = router; 
