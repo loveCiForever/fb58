@@ -4,7 +4,7 @@ import GoogleLogo from "../assets/logos/googleLogo.svg";
 import GithubLogo from "../assets/logos/githubLogo.svg";
 
 import EmailIcon from "../assets/icons/black/email.svg";
-import LockIcon from "../assets/icons/black/lock.svg";
+import LockIcon from "../assets/icons/black/lock.svg"; 
 
 import InputForm from "../components/ui/input/InputForm";
 import {
@@ -59,7 +59,7 @@ const LoginPage = () => {
               className="h-full w-full aspect-square rounded-l-2xl"
             />
           </div>
-          <div className="flex flex-col justify-center items-center p-8 sm:p-10 lg:px-[60px] py-20 gap-3 bg-red-100//">
+          <div className="flex flex-col justify-center items-center p-8 sm:p-10 lg:px-[100px] py-20 gap-3 bg-red-100//">
             <div className="flex flex-col w-full mb-6 items-start justify-center">
               <h1 className="text-3xl font-bold">Welcome to FB58</h1>
               <h2 className="tracking-wider text-gray-500 mt-2">

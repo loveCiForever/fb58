@@ -6,7 +6,7 @@ import GithubLogo from "../assets/logos/githubLogo.svg";
 import EmailIcon from "../assets/icons/black/email.svg";
 import LockIcon from "../assets/icons/black/lock.svg";
 import UserIcon from "../assets/icons/black/user.svg";
-
+import PhoneIcon from "../assets/icons/black/phone.svg";
 import InputForm from "../components/ui/input/InputForm";
 import {
   validateEmailInput,
@@ -15,6 +15,8 @@ import {
 
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import axios from "axios";
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -22,14 +24,16 @@ const SignupPage = () => {
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
 
-  const BASE_URL = import.meta.env.VITE_BASE_URL;
+  const BASE_URL = import.meta.env.VITE_SERVER_BASE_URL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // console.log("Fullname: ", fullname);
-    // console.log("Email:", email);
-    // console.log("Password: ", password);
+    console.log("Fullname: ", fullname);
+    console.log("Email:", email);
+    console.log("Password: ", password);
+    console.log("Phone: ", phone);
 
     const validateEmail = validateEmailInput(email);
     const validatePassword = validatePasswordInput(password);
@@ -43,6 +47,29 @@ const SignupPage = () => {
       toast.error(validatePassword.message);
       setPassword("");
       return;
+    }
+
+    try {
+      const response = axios.post(`${BASE_URL}/api/users/register`, {
+        name: fullname,
+        email: email,
+        phone: phone,
+        password: password,
+      });
+
+      if (response.data.status != 201) {
+        toast.error((await response).data.data.message);
+      }
+
+      axios.post(`${BASE_URL}/api/users/login`, {
+        email: email,
+        password: password,
+      });
+      
+      toast.success(response.data.data.message);
+      navigate("/schedule");
+    } catch (error) {
+      console.log(error);
     }
   };
 
@@ -61,7 +88,7 @@ const SignupPage = () => {
               className="h-full w-full aspect-square rounded-l-2xl"
             />
           </div>
-          <div className="flex flex-col justify-center items-center p-8 sm:p-10 lg:px-[60px] py-20 gap-3 bg-red-100//">
+          <div className="flex flex-col justify-center items-center p-8 sm:p-10 lg:px-[100px] py-20 gap-3 bg-red-100//">
             <div className="flex flex-col w-full mb-6 items-start justify-center">
               <h1 className="text-3xl font-bold">Welcome to FB58</h1>
               <h2 className="tracking-wider text-gray-500 mt-2">
@@ -81,6 +108,13 @@ const SignupPage = () => {
               type={"email"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+            />
+            <InputForm
+              placeholder={"Phone number"}
+              icon={PhoneIcon}
+              type={"tel"}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
             <InputForm
               placeholder={"Password"}

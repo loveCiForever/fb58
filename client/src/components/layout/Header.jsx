@@ -53,7 +53,7 @@ const Header = () => {
                 </button>
                 <button
                   className="btn-black"
-                  onClick={() => navigate("/register")}
+                  onClick={() => navigate("/signup")}
                 >
                   Sign up
                 </button>
@@ -99,7 +99,7 @@ const Header = () => {
             </button>
             <button
               className="text-center btn-black-outline"
-              onClick={() => navigate("/register")}
+              onClick={() => navigate("/signup")}
             >
               Sign up
             </button>

@@ -1,0 +1,4 @@
+{"level":"info","message":"Server running on port 3000 in development mode","service":"football-field-api","timestamp":"2025-05-15T10:08:05.113Z"}
+{"level":"info","message":"Database connection has been established successfully.","service":"football-field-api","timestamp":"2025-05-15T10:08:05.117Z"}
+{"level":"info","message":"Server running on port 3000 in development mode","service":"football-field-api","timestamp":"2025-05-15T10:14:18.510Z"}
+{"level":"info","message":"Database connection has been established successfully.","service":"football-field-api","timestamp":"2025-05-15T10:14:18.514Z"}
