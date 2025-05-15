@@ -3,10 +3,11 @@ import text_logo from "../../assets/logos/text_logo.png";
 import menu from "../../assets/icons/black/menu.svg";
 import close from "../../assets/icons/black/close.svg";
 import { useNavigate } from "react-router-dom";
-
+import { useAuth } from "../../context/AuthContext";
 const Header = () => {
   const [isClickMenu, setIsClickMenu] = useState("false");
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   return (
     <>

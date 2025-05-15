@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import Header from "../components/layout/Header.jsx";
 import Footer from "../components/layout/Footer.jsx";
-
+import AboutPitch from "../components/layout/AboutPitch.jsx";
 import api_booked_time_slots_by_date from "../data/api/booked-time-slots-by-date.json";
 import api_fields from "../data/api/fields.json";
 
@@ -20,8 +20,9 @@ const SchedulePage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedPitchId, setSelectedPitchId] = useState(1);
   const [toggleAboutPitch, setToggleAboutPitch] = useState(false);
-  const [toggleBookingModal, setToggleBookingModal] = useState(false);
-
+  const [bookingModalData, setBookingModalData] = useState(null);
+  const [modalStart, setModalStart] = useState("");
+  const [modalEnd, setModalEnd] = useState("");
   const [bookings] = useState(api_booked_time_slots_by_date.data);
 
   const [pitches] = useState(api_fields.data.fields);
@@ -31,7 +32,13 @@ const SchedulePage = () => {
   const fieldData = bookings.fields.find((f) => f.id === selectedPitchId) || {};
   const bookedSlots = fieldData.booked_time_slots || [];
 
-  console.log(fieldData);
+  useEffect(() => {
+    if (bookingModalData) {
+      setModalStart(bookingModalData.start);
+      setModalEnd(bookingModalData.end);
+      // console.log(bookingModalData);
+    }
+  }, [bookingModalData]);
 
   const parseTime = (t) => {
     const [hh, mm] = t.split(":").map(Number);
@@ -195,79 +202,7 @@ const SchedulePage = () => {
                 <h3 className="text-lg font-medium">About this pitch</h3>
               </button>
 
-              {toggleAboutPitch && (
-                <ul className="flex flex-col text-gray-800 tracking-wide list-disc ml-8 gap-2 mt-2">
-                  <li>Description: {selectedPitch.full_description}</li>
-                  <li>
-                    <div>
-                      <span>Type of grass: </span>{" "}
-                      <span className="font-bold">
-                        {selectedPitch.grass_type}
-                      </span>
-                    </div>
-                  </li>
-                  <li>
-                    <div>
-                      <span>Lighting system: </span>
-                      <span className="font-bold">
-                        {selectedPitch.lighting_system.number_bulbs} bulbs{" "}
-                        {selectedPitch.lighting_system.power}
-                      </span>
-                    </div>
-                  </li>
-                  <li>
-                    <div>
-                      <span>Numbers of seat:</span>
-                      <span className="font-bold">
-                        {" "}
-                        {selectedPitch.capacity.seats}
-                      </span>
-                    </div>
-                  </li>
-                  <li>
-                    <div>
-                      <span>Numbers of players:</span>
-                      <span className="font-bold">
-                        {" "}
-                        {selectedPitch.capacity.players}
-                      </span>
-                    </div>
-                  </li>
-
-                  <li>
-                    <div>
-                      Price:
-                      <span className="font-bold">
-                        {" "}
-                        {Number(selectedPitch.price).toLocaleString(
-                          "en-US"
-                        )}{" "}
-                        VND (no lights)
-                      </span>{" "}
-                      and{" "}
-                      <span className="font-bold">
-                        {Number(selectedPitch.priceWithLights).toLocaleString(
-                          "en-US"
-                        )}{" "}
-                        VND (lights)
-                      </span>
-                    </div>
-                  </li>
-
-                  <li>
-                    <div className="flex items-center gap-1">
-                      <span>Available from</span>
-                      <span className="font-bold">
-                        {selectedPitch.openTime}
-                      </span>
-                      <span>to</span>
-                      <span className="font-bold">
-                        {selectedPitch.closeTime}
-                      </span>
-                    </div>
-                  </li>
-                </ul>
-              )}
+              {toggleAboutPitch && <AboutPitch selectedPitch={selectedPitch} />}
             </div>
           </div>
 
@@ -325,12 +260,10 @@ const SchedulePage = () => {
                     <div>
                       <button
                         onClick={() =>
-                          isBooked
-                            ? null
-                            : setToggleBookingModal({
-                                startTime: start,
-                                endTime: end,
-                              })
+                          setBookingModalData({
+                            startTime: start,
+                            endTime: end,
+                          })
                         }
                         className={`px-3 py-1 text-md font-medium text-white rounded-md ${
                           isBooked
@@ -342,14 +275,69 @@ const SchedulePage = () => {
                       </button>
                     </div>
 
-                    {toggleBookingModal && (
-                      <div className="fixed inset-0 flex items-center justify-center bg-black/10 bg-opacity-50 z-50">
-                        <div className="bg-white rounded-lg w-[600px] py-5 px-10 max-h-[90vh] overflow-auto relative">
-                          <h1 className="text-xl font-bold mb-6">
-                            Field Booking Form
-                          </h1>
+                    {bookingModalData && (
+                      <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-96">
+                          <h2 className="text-xl font-bold mb-4">
+                            Book Your Slot
+                          </h2>
 
-                          <h2 className="text-lg">{fieldData.field}</h2>
+                          <div className="flex w-full justify-between items-start gap-3">
+                            <label className="w-full block mb-2">
+                              Start Time
+                              <input
+                                type="time"
+                                step={1800}
+                                min={selectedPitch.openTime}
+                                max={selectedPitch.closeTime}
+                                className="mt-1 block w-full border  border-gray-400 rounded px-2 py-1 outline-none"
+                                value={modalStart ?? ""}
+                                onChange={(e) => {
+                                  e.preventDefault();
+                                  setModalStart(e.target.value);
+                                }}
+                              />
+                            </label>
+                            <label className="w-full block mb-4">
+                              End Time
+                              <input
+                                type="time"
+                                step={1800}
+                                min={selectedPitch.openTime}
+                                max={selectedPitch.closeTime}
+                                className="mt-1 block w-full border border-gray-400 rounded px-2 py-1 outline-none"
+                                value={modalEnd ?? ""}
+                                onChange={(e) => {
+                                  e.preventDefault();
+                                  setModalEnd(e.target.value);
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="flex justify-end gap-2">
+                            <button
+                              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-100"
+                              onClick={() => setBookingModalData(null)}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              className="px-4 py-2 bg-green-600 font-bold hover:bg-green-500 text-white rounded"
+                              onClick={() => {
+                                console.log(
+                                  "Book from",
+                                  modalStart,
+                                  "to",
+                                  modalEnd
+                                );
+
+                                // setBookingModalData(null);
+                              }}
+                            >
+                              Confirm
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}

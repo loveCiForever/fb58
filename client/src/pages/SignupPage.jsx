@@ -7,7 +7,7 @@ import EmailIcon from "../assets/icons/black/email.svg";
 import LockIcon from "../assets/icons/black/lock.svg";
 import UserIcon from "../assets/icons/black/user.svg";
 import PhoneIcon from "../assets/icons/black/phone.svg";
-import InputForm from "../components/ui/input/InputForm";
+import InputForm from "../components/ui/InputForm.jsx";
 import {
   validateEmailInput,
   validatePasswordInput,
@@ -65,7 +65,7 @@ const SignupPage = () => {
         email: email,
         password: password,
       });
-      
+
       toast.success(response.data.data.message);
       navigate("/schedule");
     } catch (error) {

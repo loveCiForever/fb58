@@ -4,9 +4,9 @@ import GoogleLogo from "../assets/logos/googleLogo.svg";
 import GithubLogo from "../assets/logos/githubLogo.svg";
 
 import EmailIcon from "../assets/icons/black/email.svg";
-import LockIcon from "../assets/icons/black/lock.svg"; 
+import LockIcon from "../assets/icons/black/lock.svg";
 
-import InputForm from "../components/ui/input/InputForm";
+import InputForm from "../components/ui/InputForm.jsx";
 import {
   validateEmailInput,
   validatePasswordInput,
@@ -15,9 +15,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-
+import api_login from "../data/api/login.json";
+import { useAuth } from "../context/AuthContext.jsx";
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [errorMessage, setErrorMessage] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +43,13 @@ const LoginPage = () => {
       toast.error(validatePassword.message);
       setPassword("");
       return;
+    }
+
+    const response = api_login;
+    if (response) {
+      login({ user: response.data.user, token: response.data.token });
+      toast.success("Login success");
+      navigate("/schedule");
     }
   };
 
