@@ -129,7 +129,7 @@ For errors:
 {
   "success": false,
   "message": "Error message",
-  "data": {}
+  "error": {}
 }
 ```
 

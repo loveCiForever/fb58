@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import SchedulePage from "./pages/SchedulePage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SignupPage from "./pages/SignupPage.jsx";
+import VerifyPage from "./pages/VerifyPage.jsx";
 
 const App = () => {
   return (
@@ -19,6 +20,7 @@ const App = () => {
         <Route path="/login" element={<LoginPage />} />
 
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify" element={<VerifyPage />} />
       </Routes>
       <ToastContainer />
     </Router>

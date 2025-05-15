@@ -6,7 +6,7 @@ import GithubLogo from "../assets/logos/githubLogo.svg";
 import EmailIcon from "../assets/icons/black/email.svg";
 import LockIcon from "../assets/icons/black/lock.svg";
 
-import InputForm from "../components/ui/input/InputForm";
+import InputForm from "../components/ui/InputForm.jsx";
 import {
   validateEmailInput,
   validatePasswordInput,
@@ -15,9 +15,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-
+import api_login from "../data/api/login.json";
+import { useAuth } from "../context/AuthContext.jsx";
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [errorMessage, setErrorMessage] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +44,13 @@ const LoginPage = () => {
       setPassword("");
       return;
     }
+
+    const response = api_login;
+    if (response) {
+      login({ user: response.data.user, token: response.data.token });
+      toast.success("Login success");
+      navigate("/schedule");
+    }
   };
 
   useEffect(() => {
@@ -59,7 +68,7 @@ const LoginPage = () => {
               className="h-full w-full aspect-square rounded-l-2xl"
             />
           </div>
-          <div className="flex flex-col justify-center items-center p-8 sm:p-10 lg:px-[60px] py-20 gap-3 bg-red-100//">
+          <div className="flex flex-col justify-center items-center p-8 sm:p-10 lg:px-[100px] py-20 gap-3 bg-red-100//">
             <div className="flex flex-col w-full mb-6 items-start justify-center">
               <h1 className="text-3xl font-bold">Welcome to FB58</h1>
               <h2 className="tracking-wider text-gray-500 mt-2">
