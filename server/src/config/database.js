@@ -1,35 +1,14 @@
-const path = require('path');
-const dotenv = require('dotenv');
+const mongoose = require('mongoose');
+const logger = require('./logger');
 
-// Load environment variables
-dotenv.config();
-
-module.exports = {
-    development: {
-        dialect: 'sqlite',
-        storage: process.env.DATABASE_PATH || path.join(__dirname, '../../database/football-field.sqlite'),
-        logging: console.log,
-        define: {
-            timestamps: true,
-            underscored: true
-        }
-    },
-    test: {
-        dialect: 'sqlite',
-        storage: ':memory:',
-        logging: false,
-        define: {
-            timestamps: true,
-            underscored: true
-        }
-    },
-    production: {
-        dialect: 'sqlite',
-        storage: process.env.DATABASE_PATH || path.join(__dirname, '../../database/football-field.sqlite'),
-        logging: false,
-        define: {
-            timestamps: true,
-            underscored: true
-        }
+const connectDB = async () => {
+    try {
+        const conn = await mongoose.connect(process.env.MONGODB_URI);
+        logger.info(`MongoDB Connected: ${conn.connection.host}`);
+    } catch (error) {
+        logger.error('MongoDB connection error:', error);
+        process.exit(1);
     }
-}; 
+};
+
+module.exports = connectDB; 

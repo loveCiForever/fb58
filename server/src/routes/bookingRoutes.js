@@ -1,20 +1,32 @@
 const express = require('express');
 const router = express.Router();
-const bookingController = require('../controllers/bookingController');
-const { authenticate: protect, authorizeAdmin: restrictTo } = require('../middlewares/auth');
+const { protect, authorize } = require('../middleware/auth');
+const { createBookingValidation, cancelBookingValidation } = require('../middleware/validators');
+const {
+    createBooking,
+    getUserBookings,
+    getAllBookings,
+    confirmBooking,
+    rejectBooking,
+    cancelBooking,
+    getAvailableShifts,
+    getFieldShifts
+} = require('../controllers/bookingController');
 
-// Protect all booking routes - require authentication
+// Public routes
+router.get('/available-shifts', getAvailableShifts);
+router.get('/field-shifts', getFieldShifts);
+
+// Protected routes
 router.use(protect);
+router.post('/', createBookingValidation, createBooking);
+router.get('/user', getUserBookings);
+router.put('/:id/cancel', cancelBookingValidation, cancelBooking);
 
-// User booking routes
-router.post('/', bookingController.createBooking);
-router.get('/my-bookings', bookingController.getUserBookings);
-router.get('/:id', bookingController.getBookingById);
-router.patch('/:id/status', bookingController.updateBookingStatus);
-router.patch('/:id/payment', bookingController.updatePaymentStatus);
-
-// Admin only routes
-router.get('/', restrictTo, bookingController.getAllBookings);
-router.delete('/:id', bookingController.deleteBooking); // Accessible by users (to cancel) and admins (to delete)
+// Admin routes
+router.use(authorize('admin'));
+router.get('/', getAllBookings);
+router.put('/:id/confirm', confirmBooking);
+router.put('/:id/reject', rejectBooking);
 
 module.exports = router; 

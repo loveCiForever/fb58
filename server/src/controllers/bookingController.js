@@ -1,407 +1,419 @@
-const { Booking, User, Field, Service, BookingService } = require('../models');
-const { Op } = require('sequelize');
-const ApiError = require('../utils/apiError');
-const { validateTimeOverlap } = require('../utils/dateTimeHelper');
-const { sendEmail } = require('../utils/emailService');
+const Booking = require('../models/Booking');
+const Field = require('../models/Field');
+const User = require('../models/User');
+const logger = require('../config/logger');
+const { sendBookingConfirmation, sendBookingCancellation, sendBookingRejection } = require('../services/emailService');
 
 // Create a new booking
-exports.createBooking = async (req, res, next) => {
+exports.createBooking = async (req, res) => {
     try {
-        const {
-            fieldId,
-            date,
-            startTime,
-            endTime,
-            services,
-            notes
-        } = req.body;
-
-        // Get the user ID from the authenticated user
+        const { field, date, shift, team1, team2 } = req.body;
         const userId = req.user.id;
 
-        // Validate field exists
-        const field = await Field.findByPk(fieldId);
-        if (!field) {
-            return next(new ApiError('Field not found', 404));
-        }
-
-        // Check if the field is available for the requested time
-        const isAvailable = await checkFieldAvailability(fieldId, date, startTime, endTime);
-        if (!isAvailable) {
-            return next(new ApiError('Field is not available for the selected time slot', 400));
-        }
-
-        // Calculate field booking price
-        const fieldPrice = calculateFieldPrice(field, startTime, endTime);
-
-        // Calculate services price if any
-        let servicesPrice = 0;
-        let serviceItems = [];
-
-        if (services && services.length > 0) {
-            const serviceIds = services.map(service => service.id);
-            serviceItems = await Service.findAll({
-                where: { id: { [Op.in]: serviceIds } }
+        // Kiểm tra sân có tồn tại
+        const fieldExists = await Field.findById(field);
+        if (!fieldExists) {
+            return res.status(404).json({
+                success: false,
+                message: 'Field not found'
             });
-
-            if (serviceItems.length !== serviceIds.length) {
-                return next(new ApiError('One or more services not found', 404));
-            }
-
-            servicesPrice = serviceItems.reduce((total, service) => {
-                const requestedService = services.find(s => s.id === service.id);
-                return total + (service.price * (requestedService.quantity || 1));
-            }, 0);
         }
 
-        // Calculate total price
-        const totalPrice = fieldPrice + servicesPrice;
+        // Kiểm tra ca có còn trống không
+        const isAvailable = await Booking.isShiftAvailable(field, date, shift);
+        if (!isAvailable) {
+            return res.status(400).json({
+                success: false,
+                message: 'This shift is already booked'
+            });
+        }
 
-        // Create the booking
-        const booking = await Booking.create({
-            userId,
-            fieldId,
+        // Tính giá tiền
+        const totalPrice = fieldExists.price * 2; // Mỗi ca 2 tiếng
+
+        // Tạo booking mới
+        const booking = new Booking({
+            field,
+            user: userId,
             date,
-            startTime,
-            endTime,
-            totalPrice,
-            paymentStatus: 'pending',
-            notes
+            shift,
+            team1,
+            team2,
+            totalPrice
         });
 
-        // Add services to booking if any
-        if (serviceItems.length > 0) {
-            const bookingServices = serviceItems.map(service => {
-                const requestedService = services.find(s => s.id === service.id);
-                return {
-                    bookingId: booking.id,
-                    serviceId: service.id,
-                    quantity: requestedService.quantity || 1,
-                    price: service.price
-                };
-            });
+        await booking.save();
 
-            await BookingService.bulkCreate(bookingServices);
-        }
-
-        // Lấy thông tin người dùng để gửi email
-        const user = await User.findByPk(userId);
-
-        // Tính thời hạn thanh toán (24 giờ sau khi đặt sân)
-        const paymentDeadline = new Date();
-        paymentDeadline.setHours(paymentDeadline.getHours() + 24);
-        const formattedDeadline = paymentDeadline.toLocaleString('vi-VN');
-
-        // Gửi email xác nhận đặt sân
+        // Gửi email xác nhận
         try {
-            await sendEmail(user.email, 'bookingConfirmation', {
-                name: user.name,
-                booking: {
-                    bookingReference: booking.bookingReference,
-                    fieldName: field.name,
-                    date: booking.date,
-                    startTime: booking.startTime,
-                    endTime: booking.endTime,
-                    totalPrice: booking.totalPrice.toLocaleString('vi-VN'),
-                    paymentDeadline: formattedDeadline
-                }
-            });
-            console.log(`Đã gửi xác nhận đặt sân cho ${user.email}`);
+            const user = await User.findById(userId);
+            await sendBookingConfirmation(user, booking, fieldExists);
         } catch (emailError) {
-            console.error('Lỗi gửi email xác nhận đặt sân:', emailError);
-            // Vẫn tiếp tục vì đặt sân đã thành công
+            logger.error('Error sending confirmation email:', emailError);
         }
 
         res.status(201).json({
             success: true,
-            data: booking
+            message: 'Booking created successfully',
+            data: {
+                id: booking._id,
+                field,
+                date: booking.date,
+                shift: booking.shift,
+                team1,
+                team2,
+                totalPrice,
+                bookingStatus: booking.bookingStatus,
+                paymentStatus: booking.paymentStatus
+            }
         });
     } catch (error) {
-        next(error);
+        logger.error('Error creating booking:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error creating booking',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
 
-// Get all bookings (admin)
-exports.getAllBookings = async (req, res, next) => {
+// Get user's bookings
+exports.getUserBookings = async (req, res) => {
     try {
-        const { status, date, fieldId, userId } = req.query;
-        const queryOptions = {};
+        const bookings = await Booking.find({ user: req.user.id })
+            .populate('field', 'name')
+            .sort({ date: -1, 'shift.startTime': 1 });
 
-        // Filter options
-        if (status) queryOptions.status = status;
-        if (date) queryOptions.date = date;
-        if (fieldId) queryOptions.fieldId = fieldId;
-        if (userId) queryOptions.userId = userId;
-
-        const bookings = await Booking.findAll({
-            where: queryOptions,
-            include: [
-                { model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone'] },
-                { model: Field, as: 'field', attributes: ['id', 'name', 'type', 'price'] },
-                { model: Service, as: 'services', through: { attributes: ['quantity', 'price'] } }
-            ],
-            order: [['date', 'DESC'], ['startTime', 'ASC']]
-        });
-
-        res.status(200).json({
+        res.json({
             success: true,
-            count: bookings.length,
             data: bookings
         });
     } catch (error) {
-        next(error);
+        logger.error('Error getting user bookings:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error getting bookings',
+            error: error.message
+        });
     }
 };
 
-// Get user bookings
-exports.getUserBookings = async (req, res, next) => {
+// Cancel booking
+exports.cancelBooking = async (req, res) => {
     try {
-        const userId = req.user.id;
-        const { status } = req.query;
-
-        const queryOptions = { userId };
-        if (status) queryOptions.status = status;
-
-        const bookings = await Booking.findAll({
-            where: queryOptions,
-            include: [
-                { model: Field, as: 'field', attributes: ['id', 'name', 'type', 'price'] },
-                { model: Service, as: 'services', through: { attributes: ['quantity', 'price'] } }
-            ],
-            order: [['date', 'DESC'], ['startTime', 'ASC']]
-        });
-
-        res.status(200).json({
-            success: true,
-            count: bookings.length,
-            data: bookings
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// Get booking by ID
-exports.getBookingById = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-
-        const booking = await Booking.findByPk(id, {
-            include: [
-                { model: User, as: 'user', attributes: ['id', 'name', 'email', 'phone'] },
-                { model: Field, as: 'field', attributes: ['id', 'name', 'type', 'price', 'location'] },
-                { model: Service, as: 'services', through: { attributes: ['quantity', 'price'] } }
-            ]
-        });
+        const { cancellationReason } = req.body;
+        const booking = await Booking.findById(req.params.id);
 
         if (!booking) {
-            return next(new ApiError('Booking not found', 404));
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
         }
 
-        // Check if user is authorized to view this booking
-        if (!req.user.isAdmin && booking.userId !== req.user.id) {
-            return next(new ApiError('Not authorized to access this booking', 403));
+        if (booking.user.toString() !== req.user.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to cancel this booking'
+            });
         }
 
-        res.status(200).json({
-            success: true,
-            data: booking
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// Update booking status
-exports.updateBookingStatus = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const { status, cancelReason } = req.body;
-
-        const booking = await Booking.findByPk(id);
-
-        if (!booking) {
-            return next(new ApiError('Booking not found', 404));
+        if (booking.bookingStatus !== 'confirmed') {
+            return res.status(400).json({
+                success: false,
+                message: 'Only confirmed bookings can be cancelled'
+            });
         }
 
-        // Only admin can update status except for cancellations
-        if (!req.user.isAdmin && (status !== 'cancelled' || booking.userId !== req.user.id)) {
-            return next(new ApiError('Not authorized to update this booking', 403));
-        }
-
-        // Update status logic
-        booking.status = status;
-
-        // Handle cancellation
-        if (status === 'cancelled') {
-            booking.cancelledAt = new Date();
-            booking.cancelReason = cancelReason;
-        }
-
+        booking.bookingStatus = 'cancelled';
+        booking.cancellationReason = cancellationReason;
         await booking.save();
 
-        // Lấy thông tin người dùng và sân bóng để gửi email
-        const user = await User.findByPk(booking.userId);
-        const field = await Field.findByPk(booking.fieldId);
+        res.json({
+            success: true,
+            message: 'Booking cancelled successfully',
+            data: booking
+        });
+    } catch (error) {
+        logger.error('Error cancelling booking:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error cancelling booking',
+            error: error.message
+        });
+    }
+};
 
-        // Gửi email thông báo trạng thái đặt sân đã thay đổi
+// Thêm hàm mới để admin xác nhận booking
+exports.confirmBooking = async (req, res) => {
+    try {
+        const booking = await Booking.findById(req.params.id);
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
+        }
+
+        if (booking.bookingStatus !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: 'Booking is not in pending status'
+            });
+        }
+
+        booking.bookingStatus = 'confirmed';
+        await booking.save();
+
+        // Gửi email xác nhận
         try {
-            const statusMessages = {
-                'confirmed': 'Đặt sân đã được xác nhận',
-                'cancelled': 'Đặt sân đã bị hủy',
-                'completed': 'Đặt sân đã hoàn thành'
-            };
-
-            const emailSubject = `${statusMessages[status]} - Hệ thống đặt sân bóng`;
-            const emailContent = `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-                    <h2 style="color: #4caf50; text-align: center;">${statusMessages[status]}</h2>
-                    <p>Xin chào ${user.name},</p>
-                    <p>Đặt sân của bạn với thông tin sau đã được ${status === 'confirmed' ? 'xác nhận' : status === 'cancelled' ? 'hủy' : 'hoàn thành'}:</p>
-                    <div style="background-color: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 5px;">
-                        <p><strong>Mã đặt sân:</strong> ${booking.bookingReference}</p>
-                        <p><strong>Sân bóng:</strong> ${field.name}</p>
-                        <p><strong>Ngày:</strong> ${booking.date}</p>
-                        <p><strong>Thời gian:</strong> ${booking.startTime} - ${booking.endTime}</p>
-                        ${status === 'cancelled' ? `<p><strong>Lý do hủy:</strong> ${booking.cancelReason || 'Không có lý do được cung cấp'}</p>` : ''}
-                    </div>
-                    ${status === 'confirmed' ? '<p>Vui lòng thanh toán đúng hạn để hoàn tất đặt sân.</p>' : ''}
-                    <p>Nếu bạn có thắc mắc, vui lòng liên hệ với chúng tôi.</p>
-                    <p style="margin-top: 30px; text-align: center; font-size: 12px; color: #808080;">
-                        © ${new Date().getFullYear()} Hệ thống đặt sân bóng. Tất cả các quyền được bảo lưu.
-                    </p>
-                </div>
-            `;
-
-            // Chỉ gửi email khi trạng thái là confirmed, cancelled hoặc completed
-            if (['confirmed', 'cancelled', 'completed'].includes(status)) {
-                await sendEmail(user.email, 'custom', {
-                    subject: emailSubject,
-                    html: emailContent
-                });
-                console.log(`Đã gửi email thông báo trạng thái ${status} cho ${user.email}`);
-            }
+            const field = await Field.findById(booking.field);
+            await sendBookingConfirmation(booking.user.email, {
+                fieldName: field.name,
+                date: new Date(booking.date).toLocaleDateString(),
+                shift: booking.shift,
+                team1: booking.team1,
+                team2: booking.team2,
+                totalPrice: booking.totalPrice
+            });
         } catch (emailError) {
-            console.error('Lỗi gửi email thông báo trạng thái đặt sân:', emailError);
-            // Vẫn tiếp tục vì cập nhật trạng thái đặt sân đã thành công
+            logger.error('Error sending confirmation email:', emailError);
         }
 
-        res.status(200).json({
+        res.json({
             success: true,
+            message: 'Booking confirmed successfully',
             data: booking
         });
     } catch (error) {
-        next(error);
+        logger.error('Error confirming booking:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error confirming booking',
+            error: error.message
+        });
     }
 };
 
-// Update payment status
-exports.updatePaymentStatus = async (req, res, next) => {
+// Thêm hàm mới để admin từ chối booking
+exports.rejectBooking = async (req, res) => {
     try {
-        const { id } = req.params;
-        const { paymentStatus, paymentProof } = req.body;
-
-        const booking = await Booking.findByPk(id);
+        const { rejectionReason } = req.body;
+        const booking = await Booking.findById(req.params.id);
 
         if (!booking) {
-            return next(new ApiError('Booking not found', 404));
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
         }
 
-        // Only admin can update payment status directly
-        // Regular users can only upload payment proof
-        if (!req.user.isAdmin && req.user.id !== booking.userId) {
-            return next(new ApiError('Not authorized to update this booking', 403));
+        if (booking.bookingStatus !== 'pending') {
+            return res.status(400).json({
+                success: false,
+                message: 'Booking is not in pending status'
+            });
         }
 
-        if (req.user.isAdmin) {
-            booking.paymentStatus = paymentStatus;
-        }
-
-        // Handle payment proof upload
-        if (paymentProof) {
-            booking.paymentProof = paymentProof;
-            if (!req.user.isAdmin) {
-                booking.paymentStatus = 'pending'; // Reset to pending for admin verification
-            }
-        }
-
+        booking.bookingStatus = 'rejected';
+        booking.rejectionReason = rejectionReason;
         await booking.save();
 
-        res.status(200).json({
+        // Gửi email từ chối
+        try {
+            const field = await Field.findById(booking.field);
+            await sendBookingRejection(booking.user.email, {
+                fieldName: field.name,
+                date: new Date(booking.date).toLocaleDateString(),
+                shift: booking.shift,
+                team1: booking.team1,
+                team2: booking.team2,
+                rejectionReason
+            });
+        } catch (emailError) {
+            logger.error('Error sending rejection email:', emailError);
+        }
+
+        res.json({
             success: true,
+            message: 'Booking rejected successfully',
             data: booking
         });
     } catch (error) {
-        next(error);
+        logger.error('Error rejecting booking:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error rejecting booking',
+            error: error.message
+        });
     }
 };
 
-// Delete booking (admin only or user can cancel)
-exports.deleteBooking = async (req, res, next) => {
+// Lấy danh sách tất cả booking (admin)
+exports.getAllBookings = async (req, res) => {
     try {
-        const { id } = req.params;
+        const bookings = await Booking.find()
+            .populate('field', 'name')
+            .populate('user', 'email name')
+            .sort({ date: -1, 'shift.startTime': 1 });
 
-        const booking = await Booking.findByPk(id);
-
-        if (!booking) {
-            return next(new ApiError('Booking not found', 404));
-        }
-
-        // Only admin can delete bookings
-        // Users can only cancel bookings
-        if (!req.user.isAdmin && req.user.id === booking.userId) {
-            booking.status = 'cancelled';
-            booking.cancelledAt = new Date();
-            booking.cancelReason = 'Cancelled by user';
-            await booking.save();
-        } else if (req.user.isAdmin) {
-            await booking.destroy();
-        } else {
-            return next(new ApiError('Not authorized to delete this booking', 403));
-        }
-
-        res.status(200).json({
+        res.json({
             success: true,
-            message: req.user.isAdmin ? 'Booking deleted successfully' : 'Booking cancelled successfully'
+            data: bookings
         });
     } catch (error) {
-        next(error);
+        logger.error('Error getting all bookings:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error getting bookings',
+            error: error.message
+        });
     }
 };
 
-// Helper function to check field availability
-const checkFieldAvailability = async (fieldId, date, startTime, endTime) => {
-    // Find any overlapping bookings
-    const overlappingBookings = await Booking.findAll({
-        where: {
-            fieldId,
-            date,
-            status: {
-                [Op.notIn]: ['cancelled']
-            },
-            [Op.or]: [
-                {
-                    startTime: {
-                        [Op.lt]: endTime
-                    },
-                    endTime: {
-                        [Op.gt]: startTime
-                    }
-                }
-            ]
-        }
-    });
+// Lấy danh sách ca còn trống cho một sân vào một ngày
+exports.getAvailableShifts = async (req, res) => {
+    try {
+        const { fieldId, date } = req.query;
 
-    return overlappingBookings.length === 0;
+        if (!fieldId || !date) {
+            return res.status(400).json({
+                success: false,
+                message: 'Field ID and date are required'
+            });
+        }
+
+        // Kiểm tra sân có tồn tại
+        const field = await Field.findById(fieldId);
+        if (!field) {
+            return res.status(404).json({
+                success: false,
+                message: 'Field not found'
+            });
+        }
+
+        // Lấy tất cả booking của sân trong ngày
+        const bookingDate = new Date(date);
+        bookingDate.setUTCHours(0, 0, 0, 0);
+
+        const bookings = await Booking.find({
+            field: fieldId,
+            date: {
+                $gte: bookingDate,
+                $lt: new Date(bookingDate.getTime() + 24 * 60 * 60 * 1000)
+            }
+        });
+
+        // Lấy danh sách ca từ model Booking
+        const shifts = await Booking.getShifts();
+
+        // Tạo map các ca với thông tin trạng thái
+        const availableShifts = shifts.map(shift => {
+            const booking = bookings.find(b => b.shift.name === shift.name);
+            return {
+                shift: shift.name,
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+                isAvailable: !booking || booking.bookingStatus === 'cancelled' || booking.bookingStatus === 'rejected',
+                price: field.price * 2 // Mỗi ca 2 tiếng
+            };
+        }).filter(shift => shift.isAvailable);
+
+        res.json({
+            success: true,
+            data: {
+                field: {
+                    id: field._id,
+                    name: field.name
+                },
+                date: date,
+                availableShifts: availableShifts
+            }
+        });
+    } catch (error) {
+        logger.error('Error getting available shifts:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error getting available shifts',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
 };
 
-// Helper function to calculate field booking price
-const calculateFieldPrice = (field, startTime, endTime) => {
-    // Parse times to calculate duration in hours
-    const start = new Date(`2000-01-01T${startTime}`);
-    const end = new Date(`2000-01-01T${endTime}`);
-    const durationHours = (end - start) / (1000 * 60 * 60);
+// Lấy thông tin tất cả các ca của một sân trong một ngày
+exports.getFieldShifts = async (req, res) => {
+    try {
+        const { fieldId, date } = req.query;
 
-    // Calculate price based on field hourly rate
-    return field.price * durationHours;
+        if (!fieldId || !date) {
+            return res.status(400).json({
+                success: false,
+                message: 'Field ID and date are required'
+            });
+        }
+
+        // Kiểm tra sân có tồn tại
+        const field = await Field.findById(fieldId);
+        if (!field) {
+            return res.status(404).json({
+                success: false,
+                message: 'Field not found'
+            });
+        }
+
+        // Lấy tất cả booking của sân trong ngày
+        const bookingDate = new Date(date);
+        bookingDate.setUTCHours(0, 0, 0, 0);
+
+        const bookings = await Booking.find({
+            field: fieldId,
+            date: {
+                $gte: bookingDate,
+                $lt: new Date(bookingDate.getTime() + 24 * 60 * 60 * 1000)
+            }
+        }).populate('user', 'name email');
+
+        // Lấy danh sách ca từ model Booking
+        const shifts = await Booking.getShifts();
+
+        // Tạo map các ca với thông tin booking
+        const shiftsWithBookings = shifts.map(shift => {
+            const booking = bookings.find(b => b.shift.name === shift.name);
+            return {
+                shift: shift.name,
+                startTime: shift.startTime,
+                endTime: shift.endTime,
+                isAvailable: !booking || booking.bookingStatus === 'cancelled' || booking.bookingStatus === 'rejected',
+                booking: booking && booking.bookingStatus !== 'cancelled' && booking.bookingStatus !== 'rejected' ? {
+                    id: booking._id,
+                    team1: booking.team1,
+                    team2: booking.team2,
+                    bookingStatus: booking.bookingStatus,
+                    user: {
+                        name: booking.user.name,
+                        email: booking.user.email
+                    }
+                } : null
+            };
+        });
+
+        res.json({
+            success: true,
+            data: {
+                field: {
+                    id: field._id,
+                    name: field.name
+                },
+                date: date,
+                shifts: shiftsWithBookings
+            }
+        });
+    } catch (error) {
+        logger.error('Error getting field shifts:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error getting field shifts',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
 }; 

@@ -1,16 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const fieldController = require('../controllers/fieldController');
-const { authenticate, authorizeAdmin, requireVerifiedUser } = require('../middlewares/auth');
+const { protect, authorize } = require('../middleware/auth');
+const { createFieldValidation } = require('../middleware/validators');
+const { createField, getAllFields } = require('../controllers/fieldController');
 
-// Public routes
-router.get('/', fieldController.getAllFields);
-router.get('/:id', fieldController.getFieldById);
-router.get('/:id/available-slots/:date', fieldController.getAvailableTimeSlots);
+// Get all fields
+router.get('/', getAllFields);
 
-// Admin-only routes
-router.post('/', authenticate, requireVerifiedUser, authorizeAdmin, fieldController.createField);
-router.put('/:id', authenticate, requireVerifiedUser, authorizeAdmin, fieldController.updateField);
-router.delete('/:id', authenticate, requireVerifiedUser, authorizeAdmin, fieldController.deleteField);
+// Create a new field (admin only)
+router.post('/', protect, authorize('admin'), createFieldValidation, createField);
 
 module.exports = router; 
