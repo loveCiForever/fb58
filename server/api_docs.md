@@ -18,7 +18,6 @@ A RESTful API for a football field booking system built with Express.js and SQLi
       - [Register a new user](#register-a-new-user)
       - [Verify account](#verify-account)
       - [Login](#login)
-      - [Get user profile](#get-user-profile)
       - [Update user profile](#update-user-profile)
       - [Change password](#change-password)
     - [Field Endpoints](#field-endpoints)
@@ -39,7 +38,6 @@ A RESTful API for a football field booking system built with Express.js and SQLi
       - [Get Field Shifts](#get-field-shifts)
     - [Report Endpoints (Admin only)](#report-endpoints-admin-only)
       - [Generate revenue report](#generate-revenue-report)
-  - [License](#license)
 ## Features
 
 - User authentication (register, login, profile management)
@@ -704,7 +702,6 @@ For errors:
           "isAvailable": true,
           "booking": null
         }
-        // ... các ca khác
       ]
     }
   }
@@ -859,5 +856,306 @@ All endpoints may return the following error responses:
   "success": false,
   "message": "Error message",
   "error": "Detailed error message (in development only)"
+}
+```
+
+## Admin Endpoints
+
+### Dashboard Report
+```http
+GET /api/admin/dashboard
+Authorization: Bearer <token>
+```
+Get dashboard statistics and reports for admin.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "overview": {
+            "totalUsers": 100,
+            "totalFields": 5,
+            "totalBookings": 500
+        },
+        "recentBookings": [...],
+        "bookingStats": {
+            "pending": 10,
+            "confirmed": 400,
+            "cancelled": 50,
+            "rejected": 40
+        },
+        "revenueStats": [
+            {
+                "period": "2024-05",
+                "totalRevenue": 10000000,
+                "bookingCount": 50
+            }
+        ],
+        "fieldPopularity": [
+            {
+                "fieldName": "My Dinh Stadium",
+                "bookingCount": 200,
+                "totalRevenue": 40000000
+            }
+        ],
+        "peakTimes": [
+            {
+                "shift": "SHIFT_5",
+                "bookingCount": 100
+            }
+        ]
+    }
+}
+```
+
+### User Management
+
+#### Get All Users
+```http
+GET /api/admin/users
+Authorization: Bearer <token>
+```
+Get list of all users.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": [
+        {
+            "_id": "user_id",
+            "name": "User Name",
+            "email": "user@email.com",
+            "phone": "1234567890",
+            "isVerified": true,
+            "role": "user"
+        }
+    ]
+}
+```
+
+#### Get User by ID
+```http
+GET /api/admin/users/:id
+Authorization: Bearer <token>
+```
+Get user details by ID.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "_id": "user_id",
+        "name": "User Name",
+        "email": "user@email.com",
+        "phone": "1234567890",
+        "isVerified": true,
+        "role": "user"
+    }
+}
+```
+
+#### Update User
+```http
+PUT /api/admin/users/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+    "name": "Updated Name",
+    "email": "updated@email.com",
+    "phone": "1234567890",
+    "isVerified": true
+}
+```
+Update user information.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "_id": "user_id",
+        "name": "Updated Name",
+        "email": "updated@email.com",
+        "phone": "1234567890",
+        "isVerified": true,
+        "role": "user"
+    }
+}
+```
+
+#### Delete User
+```http
+DELETE /api/admin/users/:id
+Authorization: Bearer <token>
+```
+Delete a user.
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "User deleted successfully"
+}
+```
+
+### Field Management
+
+#### Get All Fields
+```http
+GET /api/admin/fields
+Authorization: Bearer <token>
+```
+Get list of all fields.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": [
+        {
+            "_id": "field_id",
+            "name": "Field Name",
+            "short_description": "Short description",
+            "full_description": "Full description",
+            "type": "5-a-side",
+            "price": 200000,
+            "priceWithLights": 250000,
+            "openTime": "06:00",
+            "closeTime": "23:00",
+            "status": "available",
+            "image": "field.jpg",
+            "capacity": {
+                "players": 10,
+                "seats": 20
+            }
+        }
+    ]
+}
+```
+
+#### Get Field by ID
+```http
+GET /api/admin/fields/:id
+Authorization: Bearer <token>
+```
+Get field details by ID.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "_id": "field_id",
+        "name": "Field Name",
+        "short_description": "Short description",
+        "full_description": "Full description",
+        "type": "5-a-side",
+        "price": 200000,
+        "priceWithLights": 250000,
+        "openTime": "06:00",
+        "closeTime": "23:00",
+        "status": "available",
+        "image": "field.jpg",
+        "capacity": {
+            "players": 10,
+            "seats": 20
+        }
+    }
+}
+```
+
+#### Create Field
+```http
+POST /api/admin/fields
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+    "name": "New Field",
+    "short_description": "Short description",
+    "full_description": "Full description",
+    "type": "5-a-side",
+    "price": 200000,
+    "priceWithLights": 250000,
+    "openTime": "06:00",
+    "closeTime": "23:00",
+    "status": "available",
+    "image": "field.jpg",
+    "capacity": {
+        "players": 10,
+        "seats": 20
+    }
+}
+```
+Create a new field.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "_id": "field_id",
+        "name": "New Field",
+        "short_description": "Short description",
+        "full_description": "Full description",
+        "type": "5-a-side",
+        "price": 200000,
+        "priceWithLights": 250000,
+        "openTime": "06:00",
+        "closeTime": "23:00",
+        "status": "available",
+        "image": "field.jpg",
+        "capacity": {
+            "players": 10,
+            "seats": 20
+        }
+    }
+}
+```
+
+#### Update Field
+```http
+PUT /api/admin/fields/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+    "name": "Updated Field Name",
+    "price": 250000,
+    "status": "maintenance"
+}
+```
+Update field information.
+
+**Response:**
+```json
+{
+    "success": true,
+    "data": {
+        "_id": "field_id",
+        "name": "Updated Field Name",
+        "price": 250000,
+        "status": "maintenance",
+        // ... other field properties
+    }
+}
+```
+
+#### Delete Field
+```http
+DELETE /api/admin/fields/:id
+Authorization: Bearer <token>
+```
+Delete a field.
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Field deleted successfully"
 }
 ```
