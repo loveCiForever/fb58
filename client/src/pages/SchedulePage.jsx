@@ -11,9 +11,10 @@ import {
 import Header from "../components/layout/Header.jsx";
 import Footer from "../components/layout/Footer.jsx";
 import AboutPitch from "../components/layout/AboutPitch.jsx";
-import api_booked_time_slots_by_date from "../data/api/booked-time-slots-by-date.json";
-import api_fields from "../data/api/fields.json";
+// import api_booked_time_slots_by_date from "../data/api/booked-time-slots-by-date.json";
+// import api_fields from "../data/api/fields.json";
 
+import axios from "axios";
 const SchedulePage = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -23,9 +24,9 @@ const SchedulePage = () => {
   const [bookingModalData, setBookingModalData] = useState(null);
   const [modalStart, setModalStart] = useState("");
   const [modalEnd, setModalEnd] = useState("");
-  const [bookings] = useState(api_booked_time_slots_by_date.data);
+  const [bookings, setBookings] = useState([]);
 
-  const [pitches] = useState(api_fields.data.fields);
+  const [pitches] = useState([]);
   const selectedPitch =
     pitches.find((p) => p.id === selectedPitchId) || pitches[0];
 
@@ -39,6 +40,10 @@ const SchedulePage = () => {
       // console.log(bookingModalData);
     }
   }, [bookingModalData]);
+
+  useEffect(() => {
+    // await axios
+  });
 
   const parseTime = (t) => {
     const [hh, mm] = t.split(":").map(Number);

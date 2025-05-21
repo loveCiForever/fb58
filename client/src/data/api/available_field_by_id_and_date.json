@@ -1,0 +1,23 @@
+{
+    "success": true,
+    "message": "fetching data successful",
+    "data": {
+        "field": "Field 1",
+        "field_id": 1,
+        "date": "2023-07-25",
+        "availableTimeSlots": [
+            {
+                "startTime": "07:00",
+                "endTime": "08:00"
+            },
+            {
+                "startTime": "08:00",
+                "endTime": "09:00"
+            },
+            {
+                "startTime": "09:00",
+                "endTime": "10:00"
+            }
+        ]
+    }
+}

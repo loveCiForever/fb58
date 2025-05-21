@@ -15,7 +15,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import api_login from "../data/api/login.json";
+// import api_login from "../data/api/login.json";
+
 import { useAuth } from "../context/AuthContext.jsx";
 const LoginPage = () => {
   const navigate = useNavigate();

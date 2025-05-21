@@ -4,10 +4,16 @@ import menu from "../../assets/icons/black/menu.svg";
 import close from "../../assets/icons/black/close.svg";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { User, UserRoundPen, LogOut } from "lucide-react";
 const Header = () => {
   const [isClickMenu, setIsClickMenu] = useState("false");
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const [toggleUserPanel, setToggleUserPanel] = useState(false);
+
+  const { user } = useAuth();
+  const admin = "";
+
+  // console.log(user);
 
   return (
     <>
@@ -34,31 +40,77 @@ const Header = () => {
                 >
                   Schedule
                 </button>
-                <button
-                  className={`btn-hover-gray ${
-                    window.location.pathname == "/dashboard"
-                      ? "btn-selected"
-                      : ""
-                  }`}
-                  onClick={() => navigate("/dashboard")}
-                >
-                  Dashboard
-                </button>
+                {user && (
+                  <button
+                    className={`btn-hover-gray ${
+                      window.location.pathname == "/my_bookings"
+                        ? "btn-selected"
+                        : ""
+                    }`}
+                    onClick={() => navigate("/my_bookings")}
+                  >
+                    My booking
+                  </button>
+                )}
+                {admin && (
+                  <button
+                    className={`btn-hover-gray ${
+                      window.location.pathname == "/dashboard"
+                        ? "btn-selected"
+                        : ""
+                    }`}
+                    onClick={() => navigate("/dashboard")}
+                  >
+                    Dashboard
+                  </button>
+                )}
               </div>
-              <div className="flex gap-3">
-                <button
-                  className="btn-hover-gray"
-                  onClick={() => navigate("/login")}
-                >
-                  Log in
-                </button>
-                <button
-                  className="btn-black"
-                  onClick={() => navigate("/signup")}
-                >
-                  Sign up
-                </button>
-              </div>
+
+              {user ? (
+                <div>
+                  {" "}
+                  <button
+                    className="p-2 border-1 border-gray-400 rounded-full"
+                    onClick={() => setToggleUserPanel(!toggleUserPanel)}
+                  >
+                    <User />
+                  </button>
+                  {toggleUserPanel && (
+                    <div className="absolute top-16 right-7 rounded-md w-[230px] border-[1px] py-4 border-gray-300 bg-white shadow-xl z-50">
+                      <div className="cursor-pointer px-4">
+                        <h1 className="text-lg font-bold">{user.name}</h1>
+                        <h2 className="text-sm hover:text-blue-600 font-medium">
+                          {user.email}
+                        </h2>
+                      </div>
+
+                      <div className="w-full h-[1px] bg-gray-300 my-4" />
+
+                      <button className="flex items-center gap-3 hover:bg-gray-200 w-full px-4 text-start py-2">
+                        <UserRoundPen size={20} /> <h1>My profile</h1>
+                      </button>
+                      <button className="flex items-center gap-3 hover:bg-gray-200 w-full px-4 text-start py-2">
+                        <LogOut size={20} /> <h1>Logout</h1>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <button
+                    className="btn-hover-gray"
+                    onClick={() => navigate("/login")}
+                  >
+                    Log in
+                  </button>
+                  <button
+                    className="btn-black"
+                    onClick={() => navigate("/signup")}
+                  >
+                    Sign up
+                  </button>
+                </div>
+              )}
             </div>
             <div
               className="right-0 hidden cursor-pointer max-lg:block"

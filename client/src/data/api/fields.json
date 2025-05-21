@@ -19,7 +19,7 @@
                     "players": 10,
                     "seats": 100
                 },
-                "openTime": "07:00",
+                "openTime": "06:00",
                 "closeTime": "22:00"
             },
             {
@@ -39,7 +39,7 @@
                     "seats": 10
                 },
                 "openTime": "06:00",
-                "closeTime": "23:00"
+                "closeTime": "22:00"
             },
             {
                 "id": 3,
@@ -57,7 +57,7 @@
                     "players": 10,
                     "seats": 100
                 },
-                "openTime": "09:00",
+                "openTime": "06:00",
                 "closeTime": "22:00"
             },
             {
@@ -76,7 +76,7 @@
                     "players": 10,
                     "seats": 100
                 },
-                "openTime": "07:00",
+                "openTime": "06:00",
                 "closeTime": "22:00"
             }
         ]
