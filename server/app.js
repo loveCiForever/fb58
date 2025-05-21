@@ -5,10 +5,10 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { responseEnhancer } from "express-response-formatter";
 
 import ConnectDatabase from "./src/configs/database.js";
 import corsMiddleware from "./src/middlewares/cors.middleware.js";
+import responseFormatter from "./src/middlewares/response.middleware.js";
 
 import authRoute from "./src/routes/auth.route.js";
 import fieldRoute from "./src/routes/field.route.js";
@@ -27,7 +27,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(cookieParser());
 app.use(corsMiddleware);
-app.use(responseEnhancer());
+app.use(responseFormatter);
 
 // Routes
 app.use("/api/auth", authRoute);

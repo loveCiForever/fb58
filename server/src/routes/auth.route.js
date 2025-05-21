@@ -7,13 +7,23 @@ import {
   signup,
   oauth,
   getUserInfo,
+  signUp,
+  signIn,
+  getProfile,
 } from "../controllers/auth.controller.js";
 
 import { verifyJWT } from "../middlewares/verify-jwt.middleware.js";
+import { isAuthenticated } from "../middlewares/auth.middleware.js";
+
 const router = new express.Router();
 
-router.post("/signup", signup);
-router.post("/signin", signin);
+// Public routes
+router.post("/signup", signUp);
+router.post("/signin", signIn);
+
+// Protected routes
+router.get("/profile", isAuthenticated, getProfile);
+
 router.post("/signout", verifyJWT, signout);
 router.post("/oauth", oauth);
 router.post("/get-user-info", verifyJWT, getUserInfo);

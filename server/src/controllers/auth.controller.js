@@ -17,6 +17,7 @@ import { verifyJWT } from "../middlewares/verify-jwt.middleware.js";
 
 import Users from "../models/user.model.js";
 import "dotenv/config";
+import jwt from "jsonwebtoken";
 
 const signup = async (req, res) => {
   try {
@@ -316,6 +317,106 @@ const oauth = async (req, res) => {
     res
       .status(error.status || 500)
       .json({ message: error.message || "Internal server error" });
+  }
+};
+
+export const signUp = async (req, res) => {
+  try {
+    // Validate request body
+    const { error } = signUpValidation.validate(req.body);
+    if (error) {
+      return res.badRequest(error.details[0].message);
+    }
+
+    const { full_name, email, password } = req.body;
+
+    // Check if user already exists
+    const existingUser = await Users.findOne({ email });
+    if (existingUser) {
+      return res.badRequest("Email already registered");
+    }
+
+    // Create new user
+    const user = new Users({
+      full_name,
+      email,
+      password,
+    });
+
+    await user.save();
+
+    // Generate token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "30d",
+    });
+
+    res.success("User registered successfully", {
+      data: {
+        user: {
+          id: user._id,
+          full_name: user.full_name,
+          email: user.email,
+          role: user.role,
+        },
+        token,
+      },
+    }, 201);
+  } catch (error) {
+    res.error("Error registering user", error);
+  }
+};
+
+export const signIn = async (req, res) => {
+  try {
+    // Validate request body
+    const { error } = signInValidation.validate(req.body);
+    if (error) {
+      return res.badRequest(error.details[0].message);
+    }
+
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await Users.findOne({ email });
+    if (!user) {
+      return res.unauthorized("Invalid email or password");
+    }
+
+    // Check password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.unauthorized("Invalid email or password");
+    }
+
+    // Generate token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "30d",
+    });
+
+    res.success("User signed in successfully", {
+      data: {
+        user: {
+          id: user._id,
+          full_name: user.full_name,
+          email: user.email,
+          role: user.role,
+        },
+        token,
+      },
+    });
+  } catch (error) {
+    res.error("Error signing in", error);
+  }
+};
+
+export const getProfile = async (req, res) => {
+  try {
+    const user = await Users.findById(req.user._id).select("-password");
+    res.success("User profile retrieved successfully", {
+      data: user,
+    });
+  } catch (error) {
+    res.error("Error retrieving user profile", error);
   }
 };
 

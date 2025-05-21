@@ -1,6 +1,7 @@
 // ./server/src/models/user.model.js
 
-import { mongoose, Schema } from "mongoose";
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 
 let profile_imgs_name_list = [
   "Garfield",
@@ -32,33 +33,38 @@ let profile_imgs_collections_list = [
 
 const userSchema = new mongoose.Schema(
   {
+    full_name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    profile_img: {
+      type: String,
+      default: "",
+    },
     personal_info: {
-      full_name: {
-        type: String,
-        lowercase: true,
-        required: true,
-        minlength: [5, "Fullname's length must be more than 5 characters"],
-      },
-
-      email: {
-        type: String,
-        required: true,
-        lowercase: true,
-        unique: true,
-      },
-
-      password: {
-        type: String,
-        require: true,
-      },
-
       user_name: {
         type: String,
         minlength: [5, "Username's length must be more than 5 characters"],
         unique: true,
         required: true,
       },
-
       bio: {
         type: String,
         maxLength: [
@@ -67,23 +73,19 @@ const userSchema = new mongoose.Schema(
         ],
         default: "",
       },
-
       profile_img: {
         type: String,
         default: () => {
-          return `https://api.dicebear.com/6.x/${
-            profile_imgs_collections_list[
-              Math.floor(Math.random() * profile_imgs_collections_list.length)
+          return `https://api.dicebear.com/6.x/${profile_imgs_collections_list[
+            Math.floor(Math.random() * profile_imgs_collections_list.length)
+          ]
+            }/svg?seed=${profile_imgs_name_list[
+            Math.floor(Math.random() * profile_imgs_name_list.length)
             ]
-          }/svg?seed=${
-            profile_imgs_name_list[
-              Math.floor(Math.random() * profile_imgs_name_list.length)
-            ]
-          }`;
+            }`;
         },
       },
     },
-
     social_links: {
       youtube: {
         type: String,
@@ -110,7 +112,6 @@ const userSchema = new mongoose.Schema(
         default: "",
       },
     },
-
     account_info: {
       total_posts: {
         type: Number,
@@ -121,14 +122,12 @@ const userSchema = new mongoose.Schema(
         default: 0,
       },
     },
-
     google_auth: {
       type: Boolean,
       default: false,
     },
-
     blogs: {
-      type: [Schema.Types.ObjectId],
+      type: [mongoose.Schema.Types.ObjectId],
       ref: "blogs",
       default: [],
     },
@@ -143,11 +142,28 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: {
-      createdAt: "joinedAt",
-    },
+    timestamps: true,
   }
 );
 
-const userModel = mongoose.model("users", userSchema) || mongoose.model.users;
-export default userModel;
+// Hash password before saving
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Method to compare password
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+const User = mongoose.model("User", userSchema);
+
+export default User;
