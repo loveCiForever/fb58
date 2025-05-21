@@ -1,30 +1,41 @@
-@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
 
+@tailwind base;
+@tailwind components;
 @tailwind utilities;
-@layer utilities {
-  .btn-black {
-    @apply py-1 font-bold text-white bg-green-600/90 cursor-pointer px-4 hover:bg-green-400 active:bg-gray-950 rounded-[5px];
-  }
-  .btn-black-outline {
-    @apply py-1 font-bold border-1 border-black text-black cursor-pointer px-3 hover:text-black/50 hover:border-black/50 active:bg-gray-900 rounded-[5px];
-  }
-  .center {
-    @apply flex items-center justify-center;
-  }
-  .btn-hover-gray{
-    @apply px-4 py-1 font-medium border-transparent cursor-pointer hover:rounded-[5px] hover:bg-gray-200  active:bg-gray-200;
-  }
-  .btn-primary {
-    @apply box-border px-5 font-bold text-white bg-blue-600 cursor-pointer hover:bg-blue-300;
-  }
-  .btn-primary-outline {
-    @apply box-border px-5 font-bold text-blue-600 bg-white border border-blue-600 cursor-pointer hover:border-blue-300 hover:text-blue-300;
-  }
 
-  .btn-selected {
-    @apply px-4 py-1 font-medium border-transparent cursor-pointer rounded-[5px] bg-gray-200 text-black;
-  }
-  .fix-img {
-    @apply object-cover w-full h-full;
-  }
+body {
+  @apply font-sans;
+  font-family: "Google Sans", sans-serif;
+  overflow-x: auto;
 }
+
+.sidebar {
+  transform: translate3d(-100%);
+  transition: transform 0.3s ease;
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+/* [data-theme='light'] .navbar {
+  background-color: white;
+  color: black;
+}
+
+[data-theme='dark'] .navbar {
+  background-color: black;
+  color: white; 
+} */
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, and Edge */
+}
+
